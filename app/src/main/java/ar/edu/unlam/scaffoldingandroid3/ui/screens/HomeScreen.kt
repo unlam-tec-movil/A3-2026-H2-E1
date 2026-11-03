@@ -10,8 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun HomeScreen(navigateToFavoriteBusStop: () -> Unit){
-    Scaffold() {
+fun HomeScreen(navigateToFavoriteBusStop: () -> Unit) {
+    Scaffold {
         Column(Modifier.fillMaxSize().padding(it)) {
             Text("HOME")
             Button(onClick = navigateToFavoriteBusStop) {

@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun FavoriteBusStopsScreen(navigateToHome: () -> Unit) {
-    Scaffold() {
+    Scaffold {
         Column(Modifier.fillMaxSize().padding(it)) {
             Text("FAV BUS")
             Button(onClick = navigateToHome) {
