@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.daggerHiltAndroid)
     alias(libs.plugins.kover)
+
+    alias(libs.plugins.jetbrainsKotlinSerialization)
 }
 
 android {
@@ -71,4 +73,7 @@ dependencies {
 
     // Coil
     implementation(libs.coil)
+
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
 }
