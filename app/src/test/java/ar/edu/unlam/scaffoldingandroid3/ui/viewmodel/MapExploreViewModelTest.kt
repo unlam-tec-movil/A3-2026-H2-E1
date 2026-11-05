@@ -1,11 +1,13 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 
 import app.cash.turbine.test
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -20,6 +22,7 @@ class MapExploreViewModelTest {
 
     private val exploreMapUseCase = mockk<ExploreMapManually>()
     private val getNearbyStops = mockk<GetNearbyStops>()
+    private val repository = mockk<LocationRepository>()
     private lateinit var viewModel: MapViewModel
 
     @Test
@@ -28,7 +31,7 @@ class MapExploreViewModelTest {
         runTest {
             val expectedUiState = MapUiState.Loading
 
-            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
 
             val actualUiState = viewModel.uiState.value
 
@@ -44,8 +47,9 @@ class MapExploreViewModelTest {
 
             coEvery { exploreMapUseCase() } returns expectedLocation
             coEvery { getNearbyStops(expectedLocation) } returns expectedStops
+            coEvery { repository.isLocationEnabled() } returns true
 
-            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -63,8 +67,9 @@ class MapExploreViewModelTest {
     fun shouldEmitErrorOnSecurityException() =
         runTest {
             coEvery { exploreMapUseCase() } throws SecurityException("No location access")
+            coEvery { repository.isLocationEnabled() } returns true
 
-            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -83,8 +88,9 @@ class MapExploreViewModelTest {
     fun shouldEmitErrorOnGenericException() =
         runTest {
             coEvery { exploreMapUseCase() } throws Exception()
+            coEvery { repository.isLocationEnabled() } returns true
 
-            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -111,8 +117,9 @@ class MapExploreViewModelTest {
 
             coEvery { exploreMapUseCase() } returns expectedLocation
             coEvery { getNearbyStops(expectedLocation) } returns expectedStops
+            coEvery { repository.isLocationEnabled() } returns true
 
-            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -145,8 +152,9 @@ class MapExploreViewModelTest {
 
             coEvery { exploreMapUseCase() } returns expectedLocation
             coEvery { getNearbyStops(expectedLocation) } returns expectedStops
+            coEvery { repository.isLocationEnabled() } returns true
 
-            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -168,6 +176,61 @@ class MapExploreViewModelTest {
                 updatedSuccess = awaitItem() as MapUiState.Success
 
                 assertNull(updatedSuccess.selectedStop)
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería emitir un error cuando el servicio de ubicación esté desactivado")
+    fun shouldEmitErrorWhenLocationServiceIsDisabled() =
+        runTest {
+            coEvery { repository.isLocationEnabled() } returns false
+
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+
+                viewModel.loadUserLocationAndStops()
+
+                val errorState = awaitItem() as MapUiState.Error
+                assertEquals(
+                    "Location service disabled",
+                    errorState.message,
+                )
+
+                coVerify(exactly = 0) { exploreMapUseCase() }
+                coVerify(exactly = 0) { getNearbyStops(any()) }
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería emitir un éxito cuando la ubicación de servicio esté activado")
+    fun shouldEmitSuccessWhenLocationServiceIsEnabled() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns expectedStops
+            coEvery { repository.isLocationEnabled() } returns true
+
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops, repository)
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+
+                viewModel.loadUserLocationAndStops()
+
+                val successState = awaitItem() as MapUiState.Success
+                assertEquals(expectedLocation, successState.location)
+                assertEquals(expectedStops, successState.busStops)
+
+                coVerify(exactly = 1) { exploreMapUseCase() }
+                coVerify(exactly = 1) { getNearbyStops(expectedLocation) }
 
                 cancelAndIgnoreRemainingEvents()
             }
