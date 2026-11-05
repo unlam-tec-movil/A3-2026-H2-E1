@@ -1,9 +1,9 @@
-package ar.edu.unlam.mobile.movil22026h2.di
+package ar.edu.unlam.scaffoldingandroid3.di
 
-import ar.edu.unlam.mobile.movil22026h2.data.datasources.local.LocationDataSource
-import ar.edu.unlam.mobile.movil22026h2.data.datasources.local.LocationDataSourceImpl
-import ar.edu.unlam.mobile.movil22026h2.data.repositories.LocationRepositoryImpl
-import ar.edu.unlam.mobile.movil22026h2.domain.repository.LocationRepository
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.LocationDataSource
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.LocationDataSourceImpl
+import ar.edu.unlam.scaffoldingandroid3.data.repositories.LocationRepositoryImpl
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

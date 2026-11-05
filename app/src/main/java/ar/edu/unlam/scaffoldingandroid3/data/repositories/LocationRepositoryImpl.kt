@@ -1,10 +1,10 @@
-package ar.edu.unlam.mobile.movil22026h2.data.repositories
+package ar.edu.unlam.scaffoldingandroid3.data.repositories
 
-import ar.edu.unlam.mobile.movil22026h2.data.datasources.local.LocationDataSource
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Latitude
-import ar.edu.unlam.mobile.movil22026h2.domain.model.LocationData
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Longitude
-import ar.edu.unlam.mobile.movil22026h2.domain.repository.LocationRepository
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.LocationDataSource
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import javax.inject.Inject
 
 /**

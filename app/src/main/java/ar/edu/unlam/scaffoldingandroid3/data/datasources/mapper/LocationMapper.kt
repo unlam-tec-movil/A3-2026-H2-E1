@@ -1,9 +1,9 @@
-package ar.edu.unlam.mobile.movil22026h2.data.datasources.mapper
+package ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper
 
 import android.location.Location
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Latitude
-import ar.edu.unlam.mobile.movil22026h2.domain.model.LocationData
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Longitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 
 /**
  * Mapper utilizado para convertir datos de ubicación brutos del sistema de ubicación

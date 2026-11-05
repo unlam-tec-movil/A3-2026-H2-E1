@@ -1,4 +1,4 @@
-package ar.edu.unlam.mobile.movil22026h2.domain.model
+package ar.edu.unlam.scaffoldingandroid3.domain.model
 
 enum class StopStatus {
     ACTIVA,

@@ -1,7 +1,7 @@
-package ar.edu.unlam.mobile.movil22026h2.di
+package ar.edu.unlam.scaffoldingandroid3.di
 
 import android.content.Context
-import ar.edu.unlam.mobile.movil22026h2.data.datasources.mapper.LocationMapper
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import dagger.Module

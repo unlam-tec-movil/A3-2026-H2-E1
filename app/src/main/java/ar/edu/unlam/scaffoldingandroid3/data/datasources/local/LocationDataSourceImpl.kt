@@ -1,9 +1,9 @@
-package ar.edu.unlam.mobile.movil22026h2.data.datasources.local
+package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 
 import android.Manifest
 import androidx.annotation.RequiresPermission
-import ar.edu.unlam.mobile.movil22026h2.data.datasources.mapper.LocationMapper
-import ar.edu.unlam.mobile.movil22026h2.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import com.google.android.gms.location.FusedLocationProviderClient
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject

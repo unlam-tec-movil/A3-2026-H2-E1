@@ -1,10 +1,10 @@
-package ar.edu.unlam.mobile.movil22026h2.data.local
+package ar.edu.unlam.scaffoldingandroid3.data.local
 
-import ar.edu.unlam.mobile.movil22026h2.data.datasources.local.LocationDataSource
-import ar.edu.unlam.mobile.movil22026h2.data.repositories.LocationRepositoryImpl
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Latitude
-import ar.edu.unlam.mobile.movil22026h2.domain.model.LocationData
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Longitude
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.LocationDataSource
+import ar.edu.unlam.scaffoldingandroid3.data.repositories.LocationRepositoryImpl
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest

@@ -1,6 +1,6 @@
-package ar.edu.unlam.mobile.movil22026h2.data.datasources.local
+package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 
-import ar.edu.unlam.mobile.movil22026h2.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 
 /**
  * Interfaz de DataSource para obtener datos de ubicación del dispositivo.

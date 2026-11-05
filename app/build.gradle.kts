@@ -73,10 +73,10 @@ dependencies {
     testRuntimeOnly(libs.junit.vintage.engine)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.google.dagger.hilt.android)
@@ -88,4 +88,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.google.play.services.location)
     implementation(libs.kotlinx.coroutines.play.services)
+    testImplementation(libs.turbine)
 }

@@ -1,9 +1,9 @@
-package ar.edu.unlam.mobile.movil22026h2.domain.usecase
+package ar.edu.unlam.scaffoldingandroid3.domain.usecase
 
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Latitude
-import ar.edu.unlam.mobile.movil22026h2.domain.model.LocationData
-import ar.edu.unlam.mobile.movil22026h2.domain.model.Longitude
-import ar.edu.unlam.mobile.movil22026h2.domain.repository.LocationRepository
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
