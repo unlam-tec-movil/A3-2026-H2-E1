@@ -12,6 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.assertNull
 
 class MapExploreViewModelTest {
     @get:Rule
@@ -49,7 +50,7 @@ class MapExploreViewModelTest {
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
 
-                viewModel.loadUserLocation()
+                viewModel.loadUserLocationAndStops()
 
                 val succesState = awaitItem() as MapUiState.Success
                 assertEquals(expectedLocation, succesState.location)
@@ -68,7 +69,7 @@ class MapExploreViewModelTest {
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
 
-                viewModel.loadUserLocation()
+                viewModel.loadUserLocationAndStops()
 
                 val errorState = awaitItem() as MapUiState.Error
                 assertEquals("No location access", errorState.message)
@@ -88,13 +89,85 @@ class MapExploreViewModelTest {
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
 
-                viewModel.loadUserLocation()
+                viewModel.loadUserLocationAndStops()
 
                 val errorState = awaitItem() as MapUiState.Error
                 assertEquals(
                     "Unknown error occurred while loading the user location",
                     errorState.message,
                 )
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería actualizar la información de la parada al seleccionarla en el mapa")
+    fun shouldUpdateSelectedBusStopWhenStopIsClicked() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+            val stopToSelect = expectedStops.first()
+
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns expectedStops
+
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+
+                viewModel.loadUserLocationAndStops()
+
+                val initialSuccess = awaitItem() as MapUiState.Success
+
+                assertNull(initialSuccess.selectedStop)
+
+                viewModel.selectBusStop(stopToSelect)
+
+                val updatedSuccess = awaitItem() as MapUiState.Success
+
+                assertEquals(expectedLocation, updatedSuccess.location)
+                assertEquals(expectedStops, updatedSuccess.busStops)
+                assertEquals(stopToSelect, updatedSuccess.selectedStop)
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería limpiar la información de la parada al dejar de seleccionarla")
+    fun shouldClearSelectedBusStopWhenDeselected() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+            val stopToSelect = expectedStops.first()
+
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns expectedStops
+
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+
+                viewModel.loadUserLocationAndStops()
+
+                val initialSuccess = awaitItem() as MapUiState.Success
+
+                assertNull(initialSuccess.selectedStop)
+
+                viewModel.selectBusStop(stopToSelect)
+
+                var updatedSuccess = awaitItem() as MapUiState.Success
+
+                assertEquals(stopToSelect, updatedSuccess.selectedStop)
+
+                viewModel.clearSelectedBusStop()
+
+                updatedSuccess = awaitItem() as MapUiState.Success
+
+                assertNull(updatedSuccess.selectedStop)
 
                 cancelAndIgnoreRemainingEvents()
             }

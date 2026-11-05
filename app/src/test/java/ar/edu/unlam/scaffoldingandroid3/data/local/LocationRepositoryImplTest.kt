@@ -68,4 +68,15 @@ class LocationRepositoryImplTest {
 
             assertEquals(expectedFallback, result)
         }
+
+    @Test
+    @DisplayName("Debería retornar false si el GPS o los servicios de ubicación están desactivados")
+    fun shouldReturnFalseIfGpsOrLocationServicesAreDisabled() =
+        runTest {
+            coEvery { mockDataSource.isLocationEnabled() } returns false
+
+            val result = repository.isLocationEnabled()
+
+            assertEquals(false, result)
+        }
 }

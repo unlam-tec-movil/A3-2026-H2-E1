@@ -9,6 +9,7 @@ sealed interface MapUiState {
     data class Success(
         val location: LocationData,
         val busStops: List<BusStop>,
+        val selectedStop: BusStop? = null,
     ) : MapUiState
 
     data class Error(

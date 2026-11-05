@@ -44,6 +44,17 @@ class LocationRepositoryImpl
                 ?: defaultLocation
 
         /**
+         * Verifica si la ubicación está habilitada en el dispositivo.
+         *
+         * Esta función delega la verificación a [LocationDataSource.isLocationEnabled],
+         * consultando la disponibilidad del servicio de ubicación a través del Fused Location Provider.
+         *
+         * @return `true` si el servicio de ubicación está disponible y habilitado,
+         *         `false` si no hay permisos, el servicio no está disponible o si el resultado está vacío.
+         */
+        override suspend fun isLocationEnabled(): Boolean = dataSource.isLocationEnabled()
+
+        /**
          * Ubicación por defecto utilizada cuando no es posible obtener la ubicación del dispositivo.
          *
          * Esta ubicación corresponde a Buenos Aires, Argentina:

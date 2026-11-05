@@ -1,6 +1,8 @@
 package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 
 import android.Manifest
+import android.content.Context
+import android.location.LocationManager
 import androidx.annotation.RequiresPermission
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
@@ -16,17 +18,21 @@ import javax.inject.Inject
  * - Utiliza [FusedLocationProviderClient] para acceder al servicio de ubicación unificado
  * - Convierte los datos de ubicación brutos al modelo de dominio mediante [LocationMapper]
  * - Maneja permisos de ubicación finos y gruesos mediante [RequiresPermission]
+ * - Utiliza [Context.LOCATION_SERVICE] para verificar la disponibilidad del servicio de ubicación
  *
  * @param locationProvider el cliente de proveedor de ubicación de Google para obtener
  *                         la última ubicación del dispositivo.
  * @param mapper el mapeador utilizado para convertir datos de ubicación brutos al modelo
  *               de dominio [LocationData].
+ * @param context el contexto de la aplicación utilizado para obtener el servicio de
+ *                ubicación [LocationManager].
  */
 class LocationDataSourceImpl
     @Inject
     constructor(
         private val locationProvider: FusedLocationProviderClient,
         private val mapper: LocationMapper,
+        private val context: Context,
     ) : LocationDataSource {
         /**
          * Obtiene la última ubicación conocida del dispositivo.
@@ -54,4 +60,36 @@ class LocationDataSourceImpl
             runCatching {
                 locationProvider.lastLocation.await()
             }.getOrNull()?.let { mapper.toDomain(it) }
+
+        /**
+         * Verifica si la ubicación está habilitada en el dispositivo.
+         *
+         * Esta función:
+         * 1. Obtiene el servicio de ubicación a través de [Context.LOCATION_SERVICE]
+         * 2. Verifica si el proveedor GPS está habilitado mediante [android.provider.Settings.Secure.isLocationProviderEnabled]
+         * 3. Verifica si el proveedor de red está habilitado mediante [android.provider.Settings.Secure.isLocationProviderEnabled]
+         * 4. Devuelve `true` si al menos uno de los proveedores está habilitado
+         *
+         * **Requisitos de permisos**: Requiere ambos permisos de ubicación:
+         * - [Manifest.permission.ACCESS_FINE_LOCATION] para precisión de GPS
+         * - [Manifest.permission.ACCESS_COARSE_LOCATION] para ubicación aproximada
+         *
+         * **Comportamiento**:
+         * - Si no hay permisos, devuelve `false`
+         * - Si el GPS está habilitado, devuelve `true`
+         * - Si la red está habilitada, devuelve `true`
+         * - Si ninguno está habilitado, devuelve `false`
+         *
+         * @return `true` si al menos uno de los proveedores de ubicación (GPS o red)
+         *         está habilitado, `false` si no hay permisos o si ningún proveedor
+         *         está disponible.
+         */
+        @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+        override suspend fun isLocationEnabled(): Boolean {
+            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+            return isGpsEnabled || isNetworkEnabled
+        }
     }
