@@ -2,6 +2,7 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 
 import app.cash.turbine.test
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import io.mockk.coEvery
@@ -17,6 +18,7 @@ class MapExploreViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val exploreMapUseCase = mockk<ExploreMapManually>()
+    private val getNearbyStops = mockk<GetNearbyStops>()
     private lateinit var viewModel: MapViewModel
 
     @Test
@@ -25,7 +27,7 @@ class MapExploreViewModelTest {
         runTest {
             val expectedUiState = MapUiState.Loading
 
-            viewModel = MapViewModel(exploreMapUseCase)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
 
             val actualUiState = viewModel.uiState.value
 
@@ -37,10 +39,12 @@ class MapExploreViewModelTest {
     fun shouldEmitSuccessWithLocationWhenLoaded() =
         runTest {
             val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
 
             coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns expectedStops
 
-            viewModel = MapViewModel(exploreMapUseCase)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -49,6 +53,7 @@ class MapExploreViewModelTest {
 
                 val succesState = awaitItem() as MapUiState.Success
                 assertEquals(expectedLocation, succesState.location)
+                assertEquals(expectedStops, succesState.busStops)
             }
         }
 
@@ -58,7 +63,7 @@ class MapExploreViewModelTest {
         runTest {
             coEvery { exploreMapUseCase() } throws SecurityException("No location access")
 
-            viewModel = MapViewModel(exploreMapUseCase)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())
@@ -78,7 +83,7 @@ class MapExploreViewModelTest {
         runTest {
             coEvery { exploreMapUseCase() } throws Exception()
 
-            viewModel = MapViewModel(exploreMapUseCase)
+            viewModel = MapViewModel(exploreMapUseCase, getNearbyStops)
 
             viewModel.uiState.test {
                 assertEquals(MapUiState.Loading, awaitItem())

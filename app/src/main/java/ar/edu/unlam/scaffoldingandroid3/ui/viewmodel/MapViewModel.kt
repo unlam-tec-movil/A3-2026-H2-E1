@@ -3,6 +3,7 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ class MapViewModel
     @Inject
     constructor(
         private val exploreMapUseCase: ExploreMapManually,
+        private val getNearbyStops: GetNearbyStops,
     ) : ViewModel() {
         @Suppress("ktlint:standard:backing-property-naming")
         private val _uiState = MutableStateFlow<MapUiState>(MapUiState.Loading)
@@ -27,8 +29,9 @@ class MapViewModel
 
                 try {
                     val location = exploreMapUseCase()
+                    val stops = getNearbyStops(location)
 
-                    _uiState.value = MapUiState.Success(location)
+                    _uiState.value = MapUiState.Success(location, stops)
                 } catch (e: SecurityException) {
                     _uiState.value = MapUiState.Error(e.message ?: LOCATION_ERROR)
                 } catch (e: Exception) {
