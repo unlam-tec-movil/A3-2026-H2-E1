@@ -1,5 +1,6 @@
 package ar.edu.unlam.scaffoldingandroid3.domain
 
+import kotlinx.serialization.Serializable
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.min
@@ -10,6 +11,7 @@ private const val EARTH_RADIUS_METERS = 6_371_000.0
 private const val METERS_PER_DEGREE = 111_320.0
 
 /** Coordenada geográfica simple, independiente de Android. */
+@Serializable
 data class GeoPoint(
     val latitude: Double,
     val longitude: Double,
@@ -26,7 +28,7 @@ data class GeoPoint(
         return 2 * EARTH_RADIUS_METERS * asin(min(1.0, sqrt(haversine)))
     }
 
-    /** Desplazamiento en metros: [north] positivo al norte, [east] positivo al este. */
+    /** Desplazamiento en metros: north positivo al norte, east positivo al este. */
     fun projectedMetersFrom(origin: GeoPoint): Pair<Double, Double> {
         val north = (latitude - origin.latitude) * METERS_PER_DEGREE
         val east =

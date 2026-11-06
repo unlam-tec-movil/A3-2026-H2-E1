@@ -4,6 +4,9 @@ import ar.edu.unlam.scaffoldingandroid3.domain.BusLine
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.domain.SearchHistory
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * Datos de demostración hasta que exista un backend de paradas.
@@ -20,6 +23,13 @@ class BusStopStubRepo : BusStopRepository {
             .filter { (_, distance) -> distance <= radiusMeters }
             .sortedBy { (_, distance) -> distance }
             .map { (stop, _) -> stop }
+            .toList()
+
+    override fun getCachedStops(): Flow<List<BusStop>> = flowOf(emptyList())
+
+    override suspend fun saveSearchQuery(query: String) {}
+
+    override fun getRecentSearches(): Flow<List<SearchHistory>> = flowOf(emptyList())
 
     private fun DemoStop.toBusStop(center: GeoPoint): BusStop =
         BusStop(

@@ -1,9 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,14 +33,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,34 +49,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.data.BusStopStubRepo
-import ar.edu.unlam.scaffoldingandroid3.data.LocationRepo
+import androidx.hilt.navigation.compose.hiltViewModel
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.domain.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.filterBusStops
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
-import ar.edu.unlam.scaffoldingandroid3.ui.components.NearbyStopsMap
-import kotlinx.coroutines.launch
+import ar.edu.unlam.scaffoldingandroid3.ui.components.GoogleMapView
+import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import kotlinx.coroutines.withTimeoutOrNull
 
-private const val SEARCH_RADIUS_METERS = 1_000.0
 private const val LOCATION_TIMEOUT_MILLIS = 10_000L
 private val DEFAULT_MANUAL_LOCATION = GeoPoint(-34.6705, -58.5628)
 
-/**
- * H01: Visualizar paradas de colectivo cercanas.
- * Contempla:
- * - Consulta con ubicación otorgada y activa.
- * - Permiso rechazado con opción de explorar manualmente.
- * - Ubicación aproximada con advertencia de distancias imprecisas.
- * - Ubicación desactivada con solicitud para activarla.
- */
 @Composable
-fun NearbyStopsScreen() {
+fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val locationRepo = remember(context) { LocationRepo(context) }
-    val busStopRepository = remember { BusStopStubRepo() }
+    val locationRepo = viewModel.locationRepo
+    val recentSearches by viewModel.recentSearches.collectAsState()
 
     var uiState by remember { mutableStateOf<NearbyStopsUiState>(NearbyStopsUiState.Locating) }
     var selectedStopId by remember { mutableStateOf<String?>(null) }
@@ -119,17 +106,13 @@ fun NearbyStopsScreen() {
         }
         uiState = NearbyStopsUiState.Locating
         val center = withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) { locationRepo.currentLocation() }
-        uiState =
-            if (center == null) {
-                NearbyStopsUiState.LocationUnavailable
-            } else {
-                val stops = busStopRepository.getNearbyStops(center, SEARCH_RADIUS_METERS)
-                NearbyStopsUiState.Ready(
-                    center = center,
-                    stops = stops,
-                    isApproximate = isApproximateLocation,
-                )
+        if (center == null) {
+            uiState = NearbyStopsUiState.LocationUnavailable
+        } else {
+            viewModel.loadStopsForLocation(center, isApproximateLocation) { state ->
+                uiState = state
             }
+        }
     }
 
     Scaffold(
@@ -137,6 +120,8 @@ fun NearbyStopsScreen() {
             HomeHeader(
                 query = query,
                 onQueryChange = { query = it },
+                onSearchSubmitted = { viewModel.onSearchSubmitted(it) },
+                recentSearches = recentSearches,
                 showSearch = selectedTab == HomeTab.Map,
             )
         },
@@ -170,16 +155,8 @@ fun NearbyStopsScreen() {
                                 onPrimary = { attempt++ },
                                 secondaryLabel = "Explorar el mapa manualmente",
                                 onSecondary = {
-                                    coroutineScope.launch {
-                                        val stops = busStopRepository.getNearbyStops(
-                                            DEFAULT_MANUAL_LOCATION,
-                                            SEARCH_RADIUS_METERS,
-                                        )
-                                        uiState = NearbyStopsUiState.Ready(
-                                            center = DEFAULT_MANUAL_LOCATION,
-                                            stops = stops,
-                                            isApproximate = false,
-                                        )
+                                    viewModel.loadStopsForLocation(DEFAULT_MANUAL_LOCATION, false) { newState ->
+                                        uiState = newState
                                     }
                                 },
                             )
@@ -199,6 +176,14 @@ fun NearbyStopsScreen() {
                         NearbyStopsUiState.LocationUnavailable ->
                             MessageContent(
                                 message = "No pudimos obtener tu ubicación. Intentá de nuevo.",
+                                primaryLabel = "Reintentar",
+                                onPrimary = { attempt++ },
+                            )
+
+                        is NearbyStopsUiState.Error ->
+                            MessageContent(
+                                title = "Error de conexión",
+                                message = state.message,
                                 primaryLabel = "Reintentar",
                                 onPrimary = { attempt++ },
                             )
@@ -224,6 +209,8 @@ fun NearbyStopsScreen() {
 private fun HomeHeader(
     query: String,
     onQueryChange: (String) -> Unit,
+    onSearchSubmitted: (String) -> Unit,
+    recentSearches: List<SearchHistory>,
     showSearch: Boolean,
 ) {
     Surface(tonalElevation = 2.dp) {
@@ -233,7 +220,7 @@ private fun HomeHeader(
                     .fillMaxWidth()
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = "Voy en Bondi",
@@ -242,7 +229,10 @@ private fun HomeHeader(
             if (showSearch) {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = onQueryChange,
+                    onValueChange = {
+                        onQueryChange(it)
+                        onSearchSubmitted(it)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(text = "Buscar parada o línea…") },
                     leadingIcon = {
@@ -251,6 +241,15 @@ private fun HomeHeader(
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
                 )
+                if (query.isBlank() && recentSearches.isNotEmpty()) {
+                    SearchHistoryChips(
+                        searches = recentSearches,
+                        onSearchClick = {
+                            onQueryChange(it)
+                            onSearchSubmitted(it)
+                        },
+                    )
+                }
             }
         }
     }
@@ -308,8 +307,23 @@ private fun NearbyStopsContent(
             }
         }
 
+        if (state.isFromCache) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Sin conexión. Mostrando paradas guardadas en caché.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
         Box(modifier = Modifier.fillMaxWidth()) {
-            NearbyStopsMap(
+            GoogleMapView(
                 userLocation = state.center,
                 stops = state.stops,
                 selectedStopId = selectedStopId,
@@ -446,20 +460,4 @@ private fun MessageContent(
             }
         }
     }
-}
-
-private sealed interface NearbyStopsUiState {
-    data object Locating : NearbyStopsUiState
-
-    data object PermissionDenied : NearbyStopsUiState
-
-    data object LocationDisabled : NearbyStopsUiState
-
-    data object LocationUnavailable : NearbyStopsUiState
-
-    data class Ready(
-        val center: GeoPoint,
-        val stops: List<BusStop>,
-        val isApproximate: Boolean = false,
-    ) : NearbyStopsUiState
 }

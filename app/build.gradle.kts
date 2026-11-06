@@ -40,6 +40,13 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/native-image/native-image.properties"
+            excludes += "/META-INF/native-image/**"
+        }
+    }
 }
 
 kotlin {
@@ -76,4 +83,15 @@ dependencies {
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+    // mongo
+    implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.6.0")
+
+    // Google Maps
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 }
