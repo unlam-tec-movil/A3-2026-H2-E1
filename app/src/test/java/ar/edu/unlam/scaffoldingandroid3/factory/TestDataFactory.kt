@@ -46,6 +46,9 @@ class TestDataFactory {
             )
 
         @JvmStatic
+        fun anotherLocationDataInstance() = LocationData(Latitude(CENTRO_LATITUDE), Longitude(CENTRO_LONGITUDE))
+
+        @JvmStatic
         fun busStopList(): List<BusStop> {
             val busRoute1 =
                 BusRoute(
