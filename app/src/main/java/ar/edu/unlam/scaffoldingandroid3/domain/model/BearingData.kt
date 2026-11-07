@@ -10,10 +10,11 @@ data class BearingData(
 ) {
     init {
         require(bearing.value in 0.0..360.0) {
-            "Bearing value must be between 0.0 and 360.0"
+            IllegalArgumentException(INVALID_BEARING)
         }
     }
 
-    fun withBearing(bearing: Bearing): BearingData =
-        BearingData(bearing)
+    fun withBearing(value: Double) = this.copy(bearing = Bearing(value))
 }
+
+private const val INVALID_BEARING = "El valor de bearing debe ubicarse entre 0.0 y 360.0"
