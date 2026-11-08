@@ -1,6 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GeoPointTest {
@@ -36,5 +37,26 @@ class GeoPointTest {
 
         assertEquals(0.0, north, 0.001)
         assertEquals(0.0, east, 0.001)
+    }
+
+    @Test
+    fun bearing_points_to_the_cardinal_directions() {
+        val origin = GeoPoint(latitude = 0.0, longitude = 0.0)
+
+        assertEquals(0f, origin.bearingTo(GeoPoint(1.0, 0.0)), 0.5f)
+        assertEquals(90f, origin.bearingTo(GeoPoint(0.0, 1.0)), 0.5f)
+        assertEquals(180f, origin.bearingTo(GeoPoint(-1.0, 0.0)), 0.5f)
+        assertEquals(270f, origin.bearingTo(GeoPoint(0.0, -1.0)), 0.5f)
+    }
+
+    @Test
+    fun bearing_to_a_nearby_point_is_in_range() {
+        val origin = GeoPoint(latitude = -34.6676, longitude = -58.5606)
+        val target = origin.offset(northMeters = 0.0, eastMeters = 100.0)
+
+        val bearing = origin.bearingTo(target)
+
+        assertEquals(90f, bearing, 1f)
+        assertTrue(bearing in 0f..360f)
     }
 }

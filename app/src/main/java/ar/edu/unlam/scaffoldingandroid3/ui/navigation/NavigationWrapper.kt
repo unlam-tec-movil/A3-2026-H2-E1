@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.ui.screens.CompassScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.FavoriteBusStopsScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.HomeScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.NearbyStopsScreen
@@ -21,7 +24,26 @@ fun NavigationWrapper() {
          * Modifier.padding(it)*/
 
         composable<NearbyStops> {
-            NearbyStopsScreen()
+            NearbyStopsScreen(
+                onNavigateToCompass = { stop ->
+                    navController.navigate(
+                        Compass(
+                            stopName = stop.name,
+                            latitude = stop.location.latitude,
+                            longitude = stop.location.longitude,
+                        ),
+                    )
+                },
+            )
+        }
+
+        composable<Compass> { backStackEntry ->
+            val route = backStackEntry.toRoute<Compass>()
+            CompassScreen(
+                stopName = route.stopName,
+                stopLocation = GeoPoint(latitude = route.latitude, longitude = route.longitude),
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable<Home> {

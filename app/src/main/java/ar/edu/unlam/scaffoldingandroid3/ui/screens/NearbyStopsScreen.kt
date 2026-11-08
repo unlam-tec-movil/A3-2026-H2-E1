@@ -33,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,7 +64,10 @@ private const val LOCATION_TIMEOUT_MILLIS = 10_000L
 private val DEFAULT_MANUAL_LOCATION = GeoPoint(-34.6705, -58.5628)
 
 @Composable
-fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
+fun NearbyStopsScreen(
+    viewModel: NearbyStopsViewModel = hiltViewModel(),
+    onNavigateToCompass: (BusStop) -> Unit = {},
+) {
     val context = LocalContext.current
     val locationRepo = viewModel.locationRepo
     val recentSearches by viewModel.recentSearches.collectAsState()
@@ -194,6 +198,7 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                                 query = query,
                                 selectedStopId = selectedStopId,
                                 onStopClick = { stop -> selectedStopId = stop.id },
+                                onOrientClick = onNavigateToCompass,
                             )
                     }
 
@@ -287,6 +292,7 @@ private fun NearbyStopsContent(
     query: String,
     selectedStopId: String?,
     onStopClick: (BusStop) -> Unit,
+    onOrientClick: (BusStop) -> Unit,
 ) {
     val selected = state.stops.firstOrNull { it.id == selectedStopId }
     val stops = remember(state.stops, query) { filterBusStops(state.stops, query) }
@@ -342,14 +348,22 @@ private fun NearbyStopsContent(
                     shape = MaterialTheme.shapes.medium,
                     tonalElevation = 3.dp,
                 ) {
-                    Text(
-                        text =
-                            selected.lines.joinToString(" · ") {
-                                "${it.code} → ${it.destination}"
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        Text(
+                            text =
+                                selected.lines.joinToString(" · ") {
+                                    "${it.code} → ${it.destination}"
+                                },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        TextButton(onClick = { onOrientClick(selected) }) {
+                            Text(text = "Orientarme")
+                        }
+                    }
                 }
             }
         }

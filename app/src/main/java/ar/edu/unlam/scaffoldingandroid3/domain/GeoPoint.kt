@@ -2,6 +2,7 @@ package ar.edu.unlam.scaffoldingandroid3.domain
 
 import kotlinx.serialization.Serializable
 import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -48,5 +49,20 @@ data class GeoPoint(
                 eastMeters / (EARTH_RADIUS_METERS * cos(Math.toRadians(latitude))),
             )
         return GeoPoint(latitude + latitudeDelta, longitude + longitudeDelta)
+    }
+
+    /** Rumbo inicial hacia el destino en grados, medido desde el norte (0° a 360°). */
+    fun bearingTo(target: GeoPoint): Float {
+        val latitude1 = Math.toRadians(latitude)
+        val longitude1 = Math.toRadians(longitude)
+        val latitude2 = Math.toRadians(target.latitude)
+        val longitude2 = Math.toRadians(target.longitude)
+
+        val deltaLongitude = longitude2 - longitude1
+        val y = sin(deltaLongitude) * cos(latitude2)
+        val x = cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(deltaLongitude)
+
+        val degrees = Math.toDegrees(atan2(y, x))
+        return ((degrees + 360) % 360).toFloat()
     }
 }
