@@ -328,6 +328,21 @@ private fun NearbyStopsContent(
             }
         }
 
+        if (state.isDemo) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
         Box(modifier = Modifier.fillMaxWidth()) {
             GoogleMapView(
                 userLocation = state.center,

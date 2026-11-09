@@ -2,6 +2,7 @@ package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ar.edu.unlam.scaffoldingandroid3.data.BusStopStubRepo
 import ar.edu.unlam.scaffoldingandroid3.data.LocationRepo
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStopRepository
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val SEARCH_RADIUS_METERS = 1_000.0
 
 sealed interface NearbyStopsUiState {
     data object Locating : NearbyStopsUiState
@@ -32,6 +35,7 @@ sealed interface NearbyStopsUiState {
         val stops: List<BusStop>,
         val isApproximate: Boolean = false,
         val isFromCache: Boolean = false,
+        val isDemo: Boolean = false,
     ) : NearbyStopsUiState
 }
 
@@ -42,6 +46,8 @@ class NearbyStopsViewModel
         private val busStopRepository: BusStopRepository,
         val locationRepo: LocationRepo,
     ) : ViewModel() {
+        private val demoRepository: BusStopRepository = BusStopStubRepo()
+
         val recentSearches: StateFlow<List<SearchHistory>> =
             busStopRepository
                 .getRecentSearches()
@@ -57,8 +63,13 @@ class NearbyStopsViewModel
             onStateUpdated: (NearbyStopsUiState) -> Unit,
         ) {
             viewModelScope.launch {
-                try {
-                    val stops = busStopRepository.getNearbyStops(center, 1000.0)
+                val stops =
+                    try {
+                        busStopRepository.getNearbyStops(center, SEARCH_RADIUS_METERS)
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                if (stops.isNotEmpty()) {
                     onStateUpdated(
                         NearbyStopsUiState.Ready(
                             center = center,
@@ -67,10 +78,14 @@ class NearbyStopsViewModel
                             isFromCache = false,
                         ),
                     )
-                } catch (e: Exception) {
+                } else {
+                    // Sin servidor o sin datos en la zona: mostramos paradas de ejemplo para no dejar la pantalla vacía.
                     onStateUpdated(
-                        NearbyStopsUiState.Error(
-                            message = e.message ?: "No pudimos conectar con el servidor de paradas.",
+                        NearbyStopsUiState.Ready(
+                            center = center,
+                            stops = demoRepository.getNearbyStops(center, SEARCH_RADIUS_METERS),
+                            isApproximate = isApproximate,
+                            isDemo = true,
                         ),
                     )
                 }

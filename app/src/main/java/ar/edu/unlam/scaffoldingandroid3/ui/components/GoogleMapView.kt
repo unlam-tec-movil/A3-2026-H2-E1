@@ -1,10 +1,13 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
 import com.google.android.gms.maps.model.CameraPosition
@@ -25,6 +28,21 @@ fun GoogleMapView(
     onStopClick: (BusStop) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val hasApiKey = remember(context) { context.hasGoogleMapsApiKey() }
+
+    // Sin API key el SDK de Google Maps cierra la app. En ese caso usamos el mapa esquemático.
+    if (!hasApiKey) {
+        NearbyStopsMap(
+            userLocation = userLocation,
+            stops = stops,
+            selectedStopId = selectedStopId,
+            onStopClick = onStopClick,
+            modifier = modifier,
+        )
+        return
+    }
+
     val userLatLng = remember(userLocation) { LatLng(userLocation.latitude, userLocation.longitude) }
     val cameraPositionState =
         rememberCameraPositionState {
@@ -71,3 +89,13 @@ fun GoogleMapView(
         }
     }
 }
+
+/** El SDK de Google Maps solo se puede crear si el manifest define la API key. */
+private fun Context.hasGoogleMapsApiKey(): Boolean =
+    try {
+        @Suppress("DEPRECATION")
+        val info = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+        !info.metaData?.getString("com.google.android.geo.API_KEY").isNullOrBlank()
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
+    }
