@@ -1,0 +1,20 @@
+package ar.edu.unlam.scaffoldingandroid3.domain.model
+
+@JvmInline
+value class Bearing(
+    val value: Double,
+)
+
+data class BearingData(
+    val bearing: Bearing,
+) {
+    init {
+        require(bearing.value in 0.0..360.0) {
+            INVALID_BEARING
+        }
+    }
+
+    fun withBearing(newBearing: Bearing) = this.copy(bearing = Bearing(newBearing.value))
+}
+
+private const val INVALID_BEARING = "El valor de bearing debe ubicarse entre 0.0 y 360.0"
