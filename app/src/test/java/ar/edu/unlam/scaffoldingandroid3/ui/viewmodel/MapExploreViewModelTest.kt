@@ -1,6 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 
 import app.cash.turbine.test
+import ar.edu.unlam.scaffoldingandroid3.dispatcher.MainDispatcherRule
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops

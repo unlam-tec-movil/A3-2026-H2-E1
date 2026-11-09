@@ -1,4 +1,4 @@
-package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
+package ar.edu.unlam.scaffoldingandroid3.dispatcher
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
