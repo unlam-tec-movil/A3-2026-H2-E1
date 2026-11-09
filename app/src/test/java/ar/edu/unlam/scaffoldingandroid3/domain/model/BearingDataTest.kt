@@ -41,7 +41,7 @@ class BearingDataTest {
                 BearingData(Bearing(-10.0))
             }
 
-        assertEquals("Bearing value must be between 0.0 and 360.0", exception.message)
+        assertEquals("El valor de bearing debe ubicarse entre 0.0 y 360.0", exception.message)
     }
 
     @Test
@@ -52,7 +52,7 @@ class BearingDataTest {
                 BearingData(Bearing(361.0))
             }
 
-        assertEquals("Bearing value must be between 0.0 and 360.0", exception.message)
+        assertEquals("El valor de bearing debe ubicarse entre 0.0 y 360.0", exception.message)
     }
 
     @Test
@@ -74,7 +74,7 @@ class BearingDataTest {
                 originalBearingData.withBearing(Bearing(-10.0))
             }
 
-        assertEquals("Bearing value must be between 0.0 and 360.0", exception.message)
+        assertEquals("El valor de bearing debe ubicarse entre 0.0 y 360.0", exception.message)
     }
 
     @Test
@@ -90,13 +90,13 @@ class BearingDataTest {
     @Test
     @DisplayName("Debería fallar al crear copia con bearing inválido")
     fun shouldFail_whenCreatingCopyWithInvalidBearing() {
-        val originalBearingData = assertDoesNotThrow<BearingData> { BearingData(Bearing(45.0)) }
+        var originalBearingData = assertDoesNotThrow<BearingData> { BearingData(Bearing(45.0)) }
         val exception =
             assertThrows<IllegalArgumentException> {
-                originalBearingData.copy(bearing = Bearing(361.0))
+                originalBearingData = originalBearingData.copy(bearing = Bearing(361.0))
             }
 
-        assertEquals("Bearing value must be between 0.0 and 360.0", exception.message)
+        assertEquals("El valor de bearing debe ubicarse entre 0.0 y 360.0", exception.message)
     }
 
     @Test
