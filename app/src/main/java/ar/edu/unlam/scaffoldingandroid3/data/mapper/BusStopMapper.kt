@@ -1,95 +1,156 @@
 package ar.edu.unlam.scaffoldingandroid3.data.mapper
 
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.entities.BusStopCacheEntity
-import ar.edu.unlam.scaffoldingandroid3.domain.BusLine
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
-import kotlinx.serialization.encodeToString
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.BusLineStatus
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.StopStatus
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.bson.Document
 
+private const val FALLBACK_STOP_NAME = "Parada de Colectivo"
+private const val FNV_OFFSET_BASIS = 0xcbf29ce484222325uL
+private const val FNV_PRIME = 0x100000001b3uL
+
 object BusStopMapper {
+    @Serializable
+    private data class CachedBusLine(
+        val lineId: Long,
+        val number: Int,
+    )
+
+    private val jsonFormat = Json { ignoreUnknownKeys = true }
+
     fun fromBsonDocument(doc: Document): BusStop {
-        val id = doc.get("_id")?.toString() ?: ""
         val properties = doc.get("properties", Document::class.java) ?: Document()
         val name =
             properties.getString("DIRECCION")
                 ?: properties.getString("CALLE")
-                ?: "Parada de Colectivo"
-
-        val location = parseLocation(doc, properties)
-        val lines = parseLines(properties)
+                ?: FALLBACK_STOP_NAME
 
         return BusStop(
-            id = id,
+            stopId = parseStopId(doc),
             name = name,
-            lines = lines,
-            location = location,
+            locationData = parseLocation(doc, properties),
+            markedAsFavorite = false,
+            busLines = parseLines(properties),
+            status = StopStatus.ACTIVA,
         )
+    }
+
+    private fun parseStopId(doc: Document): Long {
+        val id = doc.getObjectId("_id")?.toHexString() ?: doc["_id"]?.toString().orEmpty()
+        return id.toStableLong()
     }
 
     private fun parseLocation(
         doc: Document,
         properties: Document,
-    ): GeoPoint {
+    ): LocationData {
         val geometry = doc.get("geometry", Document::class.java)
         if (geometry != null) {
-            val coordinates = geometry.get("coordinates") as? List<*>
+            val coordinates = geometry["coordinates"] as? List<*>
             if (coordinates != null && coordinates.size >= 2) {
                 val lng = (coordinates[0] as? Number)?.toDouble() ?: 0.0
                 val lat = (coordinates[1] as? Number)?.toDouble() ?: 0.0
-                return GeoPoint(latitude = lat, longitude = lng)
+                return LocationData(latitude = Latitude(lat), longitude = Longitude(lng))
             }
         }
 
         val lat =
             properties.getDouble("coord_Y")
-                ?: properties.get("coord_Y")?.toString()?.toDoubleOrNull()
+                ?: properties["coord_Y"]?.toString()?.toDoubleOrNull()
                 ?: 0.0
         val lng =
             properties.getDouble("coord_X")
-                ?: properties.get("coord_X")?.toString()?.toDoubleOrNull()
+                ?: properties["coord_X"]?.toString()?.toDoubleOrNull()
                 ?: 0.0
 
-        return GeoPoint(latitude = lat, longitude = lng)
+        return LocationData(latitude = Latitude(lat), longitude = Longitude(lng))
     }
 
     private fun parseLines(properties: Document): List<BusLine> {
-        val linesList = mutableListOf<BusLine>()
+        val lines = mutableListOf<BusLine>()
 
         properties.keys
-            .filter { key -> key.startsWith("L", ignoreCase = true) && !key.contains("sen", ignoreCase = true) }
-            .sortedBy { key -> key.substring(1).toIntOrNull() ?: 99 }
+            .filter { key ->
+                key.startsWith("L", ignoreCase = true) &&
+                    !key.contains(
+                        "sen",
+                        ignoreCase = true,
+                    )
+            }.sortedBy { key -> key.substring(1).toIntOrNull() ?: 99 }
             .forEach { key ->
                 val code = properties.getString(key)?.trim()
                 if (!code.isNullOrBlank() && !code.equals("null", ignoreCase = true)) {
-                    val senseKey = "${key.lowercase()}_sen"
-                    val sense =
-                        properties.getString(senseKey)
-                            ?: properties.getString(senseKey.uppercase())
-                            ?: ""
-                    val destination = if (sense.isNotBlank()) "Sentido $sense" else "Recorrido habitual"
-                    linesList.add(BusLine(code = code, destination = destination))
+                    lines.add(
+                        BusLine(
+                            lineId = code.toStableLong(),
+                            number = code.toLineNumber(),
+                            routes = emptyList(),
+                            currentStatus = BusLineStatus.NORMAL,
+                        ),
+                    )
                 }
             }
 
-        return linesList.distinctBy { it.code }
+        return lines.distinctBy { it.lineId }
     }
 
     fun BusStop.toCacheEntity(): BusStopCacheEntity =
         BusStopCacheEntity(
-            id = id,
+            stopId = stopId,
             name = name,
-            latitude = location.latitude,
-            longitude = location.longitude,
-            linesJson = Json.encodeToString(lines),
+            latitude = locationData.latitude.value,
+            longitude = locationData.longitude.value,
+            linesJson =
+                if (busLines.isEmpty()) {
+                    ""
+                } else {
+                    jsonFormat.encodeToString(
+                        busLines.map {
+                            CachedBusLine(
+                                it.lineId,
+                                it.number,
+                            )
+                        },
+                    )
+                },
+            markedAsFavorite = markedAsFavorite,
+            stopStatus = status.name,
         )
 
     fun BusStopCacheEntity.toDomain(): BusStop =
         BusStop(
-            id = id,
+            stopId = stopId,
             name = name,
-            lines = if (linesJson.isBlank()) emptyList() else Json.decodeFromString(linesJson),
-            location = GeoPoint(latitude = latitude, longitude = longitude),
+            locationData =
+                LocationData(
+                    latitude = Latitude(latitude),
+                    longitude = Longitude(longitude),
+                ),
+            markedAsFavorite = markedAsFavorite,
+            busLines =
+                if (linesJson.isBlank()) {
+                    emptyList()
+                } else {
+                    jsonFormat.decodeFromString<List<CachedBusLine>>(linesJson).map { cached ->
+                        BusLine(
+                            lineId = cached.lineId,
+                            number = cached.number,
+                            routes = emptyList(),
+                            currentStatus = BusLineStatus.NORMAL,
+                        )
+                    }
+                },
+            status = runCatching { StopStatus.valueOf(stopStatus) }.getOrDefault(StopStatus.ACTIVA),
         )
+
+    private fun String.toLineNumber(): Int = toIntOrNull() ?: filter { it.isDigit() }.toIntOrNull() ?: hashCode()
+
+    private fun String.toStableLong(): Long = fold(FNV_OFFSET_BASIS) { acc, char -> (acc xor char.code.toULong()) * FNV_PRIME }.toLong()
 }
