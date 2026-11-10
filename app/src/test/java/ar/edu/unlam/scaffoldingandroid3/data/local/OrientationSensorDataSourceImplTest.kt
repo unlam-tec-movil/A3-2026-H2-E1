@@ -4,7 +4,6 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.OrientationSensorDataSource
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.OrientationSensorDataSourceImpl
 import dagger.hilt.android.testing.HiltAndroidTest
 import io.mockk.every
@@ -13,14 +12,16 @@ import io.mockk.verify
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
 import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.assertNull
 import javax.inject.Inject
 
 @Suppress("DEPRECATION")
 @HiltAndroidTest
 class OrientationSensorDataSourceImplTest {
     @Inject
-    lateinit var dataSource: OrientationSensorDataSource
+    lateinit var dataSource: OrientationSensorDataSourceImpl
 
     val mockContext = mockk<Context>()
     val mockSensorManager = mockk<SensorManager>(relaxed = true)
@@ -71,5 +72,36 @@ class OrientationSensorDataSourceImplTest {
         dataSource.stopListening()
 
         verify(exactly = 1) { mockSensorManager.unregisterListener(any<SensorEventListener>()) }
+    }
+
+    @Test
+    @DisplayName("Debería actualizar orientationDegrees cuando onSensorChanged recibe un evento del sensor de orientación")
+    fun shouldUpdateOrientationDegreesWhenSensorChanged() {
+        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockSensor
+        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
+
+        dataSource = OrientationSensorDataSourceImpl(mockContext)
+
+        val expectedAzimuth = 45.0f
+
+        val sampleValues = floatArrayOf(expectedAzimuth, 0.0f, 0.0f)
+
+        dataSource.processOrientationValuesFromArray(sampleValues)
+
+        assertEquals(expectedAzimuth, dataSource.orientationDegrees.value)
+    }
+
+    @Test
+    @DisplayName("Debería reiniciar orientationDegrees a null al llamar a stopListening")
+    fun shouldResetOrientationDegreesToNullWhenStopListening() {
+        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockSensor
+        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
+
+        val dataSource = OrientationSensorDataSourceImpl(mockContext)
+        dataSource.processOrientationValuesFromArray(floatArrayOf(90.0f, 0.0f, 0.0f))
+
+        dataSource.stopListening()
+
+        assertNull(dataSource.orientationDegrees.value)
     }
 }

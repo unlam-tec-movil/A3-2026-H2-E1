@@ -35,16 +35,26 @@ class OrientationSensorDataSourceImpl
 
         override fun stopListening() {
             sensorManager.unregisterListener(this)
+            _orientationDegrees.value = null
         }
 
         override fun onAccuracyChanged(
             sensor: Sensor?,
             accuracy: Int,
         ) {
-            TODO("Not yet implemented")
         }
 
         override fun onSensorChanged(event: SensorEvent?) {
-            TODO("Not yet implemented")
+            event?.let {
+                if (it.sensor.type == Sensor.TYPE_ORIENTATION) {
+                    processOrientationValuesFromArray(it.values)
+                }
+            }
+        }
+
+        internal fun processOrientationValuesFromArray(values: FloatArray) {
+            val azimuth = values[0]
+
+            _orientationDegrees.value = azimuth
         }
     }
