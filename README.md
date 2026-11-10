@@ -3,6 +3,7 @@
 ## Index
 
 - [Configuración](#configuration)
+    - [Conexión a MongoDB](#conexión-a-mongodb)
 - [Arquitectura Hexagonal](#arquitectura-hexagonal)
 - [Domain](#domain)
     - [Modelos](#modelos)
@@ -29,6 +30,47 @@ código usando ktlint y gradle. El segundo ejecuta los tests de la aplicación.
 
 Para configurar el proyecto en Android Studio, se debe de tener instalado el plugin
 de [ktlint](https://plugins.jetbrains.com/plugin/15057-ktlint)
+
+## Conexión a MongoDB
+
+Las paradas de colectivo se leen desde un MongoDB remoto (Atlas, `cluster0.q0rzacs.mongodb.net`).
+Las credenciales no se versionan: se definen en `local.properties` (ignorado por git) en la raíz
+del proyecto:
+
+```properties
+MONGODB_USER=<usuario>
+MONGODB_PASS=<contraseña>
+MONGODB_DATABASE=<base de datos>
+MONGODB_COLLECTION=<colección de paradas>
+```
+
+* `app/build.gradle.kts` lee estos valores, codifica usuario y contraseña (URL encoding) y genera
+  `BuildConfig.MONGODB_URI`, `MONGODB_DATABASE` y `MONGODB_COLLECTION`.
+* `data/di/DataModule` crea el `MongoClient` y la colección con Hilt, y expone
+  `BusStopMongoRepo` como `BusStopRepository`.
+* Tras modificar `local.properties` hay que sincronizar Gradle y volver a compilar.
+
+Requisitos del lado de Atlas:
+
+* El usuario necesita permiso de lectura sobre la base de datos.
+* La IP del dispositivo o la red debe estar en el *IP Access List* de Atlas.
+* La colección debe tener un índice `2dsphere` sobre `location`.
+
+Formato esperado de cada documento:
+
+```json
+{
+  "_id": "parada-1",
+  "name": "Av. Perón y Arieta",
+  "lines": [{ "code": "96", "destination": "Plaza Once" }],
+  "location": { "type": "Point", "coordinates": [-58.5628, -34.6705] }
+}
+```
+
+`coordinates` es `[longitud, latitud]` (GeoJSON).
+
+> Las credenciales quedan embebidas en el APK. Esta conexión directa es válida para desarrollo;
+> para producción conviene una API intermedia.
 
 # Arquitectura Hexagonal
 
