@@ -1,3 +1,6 @@
+import java.net.URLEncoder
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -8,6 +11,19 @@ plugins {
     alias(libs.plugins.kover)
 
     alias(libs.plugins.jetbrainsKotlinSerialization)
+}
+
+val localProperties =
+    Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
+    }
+
+fun mongoProperty(name: String): String = localProperties.getProperty(name, "")
+
+fun mongoUri(): String {
+    val user = URLEncoder.encode(mongoProperty("MONGODB_USER"), "UTF-8")
+    val pass = URLEncoder.encode(mongoProperty("MONGODB_PASS"), "UTF-8")
+    return "mongodb+srv://$user:$pass@cluster0.q0rzacs.mongodb.net/"
 }
 
 android {
@@ -22,6 +38,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "MONGODB_URI", "\"${mongoUri()}\"")
+        buildConfigField("String", "MONGODB_DATABASE", "\"${mongoProperty("MONGODB_DATABASE")}\"")
+        buildConfigField("String", "MONGODB_COLLECTION", "\"${mongoProperty("MONGODB_COLLECTION")}\"")
     }
 
     buildTypes {
@@ -37,8 +57,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    packaging {
+        resources.excludes += "META-INF/native-image/**"
+    }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -76,4 +100,5 @@ dependencies {
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.mongodb.driver.kotlin.coroutine)
 }

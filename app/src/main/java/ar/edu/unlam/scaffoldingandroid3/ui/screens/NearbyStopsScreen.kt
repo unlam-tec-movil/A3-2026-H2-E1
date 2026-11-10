@@ -52,13 +52,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.data.BusStopStubRepo
 import ar.edu.unlam.scaffoldingandroid3.data.LocationRepo
+import ar.edu.unlam.scaffoldingandroid3.data.mongodb.BusStopMongoRepo
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
 import ar.edu.unlam.scaffoldingandroid3.domain.filterBusStops
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.NearbyStopsMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -79,7 +81,7 @@ fun NearbyStopsScreen() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val locationRepo = remember(context) { LocationRepo(context) }
-    val busStopRepository = remember { BusStopStubRepo() }
+    val busStopRepository = BusStopMongoRepo.default
 
     var uiState by remember { mutableStateOf<NearbyStopsUiState>(NearbyStopsUiState.Locating) }
     var selectedStopId by remember { mutableStateOf<String?>(null) }
@@ -123,12 +125,7 @@ fun NearbyStopsScreen() {
             if (center == null) {
                 NearbyStopsUiState.LocationUnavailable
             } else {
-                val stops = busStopRepository.getNearbyStops(center, SEARCH_RADIUS_METERS)
-                NearbyStopsUiState.Ready(
-                    center = center,
-                    stops = stops,
-                    isApproximate = isApproximateLocation,
-                )
+                loadStops(busStopRepository, center, isApproximateLocation)
             }
     }
 
@@ -171,15 +168,8 @@ fun NearbyStopsScreen() {
                                 secondaryLabel = "Explorar el mapa manualmente",
                                 onSecondary = {
                                     coroutineScope.launch {
-                                        val stops = busStopRepository.getNearbyStops(
-                                            DEFAULT_MANUAL_LOCATION,
-                                            SEARCH_RADIUS_METERS,
-                                        )
-                                        uiState = NearbyStopsUiState.Ready(
-                                            center = DEFAULT_MANUAL_LOCATION,
-                                            stops = stops,
-                                            isApproximate = false,
-                                        )
+                                        uiState =
+                                            loadStops(busStopRepository, DEFAULT_MANUAL_LOCATION, false)
                                     }
                                 },
                             )
@@ -199,6 +189,13 @@ fun NearbyStopsScreen() {
                         NearbyStopsUiState.LocationUnavailable ->
                             MessageContent(
                                 message = "No pudimos obtener tu ubicación. Intentá de nuevo.",
+                                primaryLabel = "Reintentar",
+                                onPrimary = { attempt++ },
+                            )
+
+                        NearbyStopsUiState.StopsUnavailable ->
+                            MessageContent(
+                                message = "No pudimos cargar las paradas. Revisá tu conexión e intentá de nuevo.",
                                 primaryLabel = "Reintentar",
                                 onPrimary = { attempt++ },
                             )
@@ -457,9 +454,28 @@ private sealed interface NearbyStopsUiState {
 
     data object LocationUnavailable : NearbyStopsUiState
 
+    data object StopsUnavailable : NearbyStopsUiState
+
     data class Ready(
         val center: GeoPoint,
         val stops: List<BusStop>,
         val isApproximate: Boolean = false,
     ) : NearbyStopsUiState
 }
+
+private suspend fun loadStops(
+    repository: BusStopRepository,
+    center: GeoPoint,
+    isApproximate: Boolean,
+): NearbyStopsUiState =
+    try {
+        NearbyStopsUiState.Ready(
+            center = center,
+            stops = repository.getNearbyStops(center, SEARCH_RADIUS_METERS),
+            isApproximate = isApproximate,
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        NearbyStopsUiState.StopsUnavailable
+    }
