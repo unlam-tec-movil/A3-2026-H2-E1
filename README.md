@@ -33,11 +33,12 @@ de [ktlint](https://plugins.jetbrains.com/plugin/15057-ktlint)
 
 ## Conexión a MongoDB
 
-Las paradas de colectivo se leen desde un MongoDB remoto (Atlas, `cluster0.q0rzacs.mongodb.net`).
+Las paradas de colectivo se leen desde un MongoDB remoto (Atlas, conexión `mongodb+srv`).
 Las credenciales no se versionan: se definen en `local.properties` (ignorado por git) en la raíz
 del proyecto:
 
 ```properties
+MONGODB_HOST=<host del cluster, ej: cluster0.xxxxx.mongodb.net>
 MONGODB_USER=<usuario>
 MONGODB_PASS=<contraseña>
 MONGODB_DATABASE=<base de datos>

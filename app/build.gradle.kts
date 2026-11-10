@@ -27,7 +27,7 @@ fun mongoProperty(name: String): String = localProperties.getProperty(name, "")
 fun mongoUri(): String {
     val user = URLEncoder.encode(mongoProperty("MONGODB_USER"), "UTF-8")
     val pass = URLEncoder.encode(mongoProperty("MONGODB_PASS"), "UTF-8")
-    return "mongodb+srv://$user:$pass@cluster0.q0rzacs.mongodb.net/"
+    return "mongodb+srv://$user:$pass@${mongoProperty("MONGODB_HOST")}/"
 }
 
 android {
