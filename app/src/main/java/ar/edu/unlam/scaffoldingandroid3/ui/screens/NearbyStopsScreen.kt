@@ -1,9 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,7 +33,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,8 +49,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import ar.edu.unlam.scaffoldingandroid3.data.LocationRepo
-import ar.edu.unlam.scaffoldingandroid3.data.mongodb.BusStopMongoRepo
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
@@ -77,11 +74,11 @@ private val DEFAULT_MANUAL_LOCATION = GeoPoint(-34.6705, -58.5628)
  * - Ubicación desactivada con solicitud para activarla.
  */
 @Composable
-fun NearbyStopsScreen() {
+fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val locationRepo = remember(context) { LocationRepo(context) }
-    val busStopRepository = BusStopMongoRepo.default
+    val busStopRepository = viewModel.busStopRepository
 
     var uiState by remember { mutableStateOf<NearbyStopsUiState>(NearbyStopsUiState.Locating) }
     var selectedStopId by remember { mutableStateOf<String?>(null) }

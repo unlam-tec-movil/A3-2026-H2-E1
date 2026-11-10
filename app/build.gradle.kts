@@ -15,7 +15,11 @@ plugins {
 
 val localProperties =
     Properties().apply {
-        rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
+        rootProject
+            .file("local.properties")
+            .takeIf { it.exists() }
+            ?.reader()
+            ?.use(::load)
     }
 
 fun mongoProperty(name: String): String = localProperties.getProperty(name, "")

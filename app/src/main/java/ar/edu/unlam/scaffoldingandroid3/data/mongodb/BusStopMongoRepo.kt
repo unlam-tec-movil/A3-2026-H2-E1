@@ -1,6 +1,5 @@
 package ar.edu.unlam.scaffoldingandroid3.data.mongodb
 
-import ar.edu.unlam.scaffoldingandroid3.BuildConfig
 import ar.edu.unlam.scaffoldingandroid3.domain.BusLine
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.BusStopRepository
@@ -8,10 +7,10 @@ import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.geojson.Point
 import com.mongodb.client.model.geojson.Position
-import com.mongodb.kotlin.client.coroutine.MongoClient
 import com.mongodb.kotlin.client.coroutine.MongoCollection
 import kotlinx.coroutines.flow.toList
 import org.bson.codecs.pojo.annotations.BsonId
+import javax.inject.Inject
 
 private const val LOCATION_FIELD = "location"
 
@@ -49,37 +48,20 @@ internal fun BusStopDocument.toDomain(): BusStop? {
  * Paradas reales desde un MongoDB remoto.
  * La colección necesita un índice `2dsphere` sobre `location` (GeoJSON Point).
  */
-class BusStopMongoRepo(
-    private val collection: MongoCollection<BusStopDocument>,
-) : BusStopRepository {
-    override suspend fun getNearbyStops(
-        center: GeoPoint,
-        radiusMeters: Double,
-    ): List<BusStop> {
-        val origin = Point(Position(center.longitude, center.latitude))
-        // $near ya devuelve los resultados ordenados del más cercano al más lejano.
-        return collection
-            .find(Filters.near(LOCATION_FIELD, origin, radiusMeters, null))
-            .toList()
-            .mapNotNull { it.toDomain() }
-    }
-
-    companion object {
-        /** Instancia compartida configurada desde `local.properties` (ver `app/build.gradle.kts`). */
-        val default: BusStopMongoRepo by lazy {
-            create(BuildConfig.MONGODB_URI, BuildConfig.MONGODB_DATABASE, BuildConfig.MONGODB_COLLECTION)
+class BusStopMongoRepo
+    @Inject
+    constructor(
+        private val collection: MongoCollection<BusStopDocument>,
+    ) : BusStopRepository {
+        override suspend fun getNearbyStops(
+            center: GeoPoint,
+            radiusMeters: Double,
+        ): List<BusStop> {
+            val origin = Point(Position(center.longitude, center.latitude))
+            // $near ya devuelve los resultados ordenados del más cercano al más lejano.
+            return collection
+                .find(Filters.near(LOCATION_FIELD, origin, radiusMeters, null))
+                .toList()
+                .mapNotNull { it.toDomain() }
         }
-
-        fun create(
-            connectionString: String,
-            database: String,
-            collection: String,
-        ): BusStopMongoRepo =
-            BusStopMongoRepo(
-                MongoClient
-                    .create(connectionString)
-                    .getDatabase(database)
-                    .getCollection<BusStopDocument>(collection),
-            )
     }
-}
