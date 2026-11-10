@@ -1,18 +1,25 @@
 package ar.edu.unlam.scaffoldingandroid3.data.database
 
+import ar.edu.unlam.scaffoldingandroid3.BuildConfig
 import com.mongodb.kotlin.client.coroutine.MongoClient
 
+/**
+ * Cliente de MongoDB Atlas compartido por toda la aplicación.
+ *
+ * La conexión se toma de `BuildConfig.MONGODB_URI`, que se inyecta desde `local.properties`
+ * en tiempo de build: las credenciales nunca viven en el código fuente ni en el repositorio.
+ *
+ * Si la URI no está configurada, el cliente no se crea y [getDatabase] lanza una excepción
+ * que el repositorio de paradas captura para degradar la fuente (caché o demo).
+ */
 object MongoDataSource {
-    private const val URI =
-        "mongodb://paezfederico96_db_user:LD69MJEH0L4Q9NBN@" +
-            "ac-qcmp5ot-shard-00-00.xayhiab.mongodb.net:27017," +
-            "ac-qcmp5ot-shard-00-01.xayhiab.mongodb.net:27017," +
-            "ac-qcmp5ot-shard-00-02.xayhiab.mongodb.net:27017/" +
-            "?tls=true&authSource=admin&replicaSet=atlas-iq7bku-shard-0" +
-            "&serverSelectionTimeoutMS=5000&connectTimeoutMS=5000"
     val client: MongoClient by lazy {
-        MongoClient.create(URI)
+        check(BuildConfig.MONGODB_URI.isNotBlank()) { MISSING_URI_MESSAGE }
+        MongoClient.create(BuildConfig.MONGODB_URI)
     }
 
     fun getDatabase(dbName: String) = client.getDatabase(dbName)
+
+    private const val MISSING_URI_MESSAGE =
+        "Falta configurar MONGODB_URI en local.properties para conectarse a MongoDB Atlas."
 }
