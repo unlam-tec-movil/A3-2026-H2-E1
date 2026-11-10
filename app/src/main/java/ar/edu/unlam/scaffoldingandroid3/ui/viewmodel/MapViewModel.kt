@@ -2,33 +2,44 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.NearbyStopsOrigin
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.NearbyStopsResult
+import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.FilterBusStops
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
+private const val LOCATION_TIMEOUT_MILLIS = 10_000L
+private const val LOCATION_ERROR = "Error loading user location"
+private const val UNKNOWN_ERROR = "Unknown error occurred while loading the user location"
+
+/** Punto de partida cuando el pasajero prefiere explorar el mapa sin usar su ubicación. */
+private val DEFAULT_MANUAL_LOCATION = LocationData(Latitude(-34.6705), Longitude(-58.5628))
+
 /**
- * ViewModel que maneja el estado y la lógica de la vista del mapa.
+ * ViewModel unificado de la pantalla principal: mapa y lista de paradas cercanas.
  *
- * Esta ViewModel:
- * - Carga la ubicación del usuario y las paradas de autobús cercanas
- * - Gestiona la selección de una parada de autobús específica
- * - Maneja errores relacionados con permisos y excepciones de seguridad
- * - Verifica el estado del servicio de ubicación antes de cargar datos
- *
- * @param exploreMapUseCase el caso de uso para explorar el mapa y cargar la ubicación del
- *                           usuario junto con las paradas cercanas.
- * @param getNearbyStops el caso de uso para obtener las paradas de autobús cercanas a la
- *                        ubicación del usuario.
- * @param repository el repositorio de ubicación utilizado para verificar si el servicio
- *                   de ubicación está habilitado antes de cargar datos.
+ * Absorbe lo mejor de las dos arquitecturas que se fusionaron:
+ * - Carga la ubicación con timeout y las paradas cercanas con uso de casos.
+ * - Comunica por qué no hay ubicación (permiso, servicio deshabilitado o sin fix) en lugar
+ *   de caer silenciosamente a una ubicación por defecto.
+ * - Reporta el origen de las paradas (remoto, caché o demo) para que la pantalla informe.
+ * - Filtra las paradas por texto de búsqueda y persiste el historial de búsquedas.
  */
 @HiltViewModel
 class MapViewModel
@@ -36,95 +47,121 @@ class MapViewModel
     constructor(
         private val exploreMapUseCase: ExploreMapManually,
         private val getNearbyStops: GetNearbyStops,
-        private val repository: LocationRepository,
+        private val filterBusStops: FilterBusStops,
+        private val busStopRepository: BusStopRepository,
+        private val locationRepository: LocationRepository,
     ) : ViewModel() {
         @Suppress("ktlint:standard:backing-property-naming")
         private val _uiState = MutableStateFlow<MapUiState>(MapUiState.Loading)
         val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
+        val recentSearches: StateFlow<List<SearchHistory>> =
+            busStopRepository
+                .getRecentSearches()
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = emptyList(),
+                )
+
+        private var currentQuery = ""
+
         /**
-         * Carga la ubicación del usuario y las paradas de autobús cercanas.
-         *
-         * Esta función:
-         * 1. Establece el estado inicial de carga mediante [MapUiState.Loading]
-         * 2. Verifica si el servicio de ubicación está habilitado mediante [ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository.isLocationEnabled]
-         * 3. Si el servicio no está habilitado, establece el estado de error con [LOCATION_DISABLED]
-         * 4. Obtiene la ubicación del usuario a través de [exploreMapUseCase]
-         * 5. Obtiene las paradas cercanas a través de [getNearbyStops]
-         * 6. Actualiza el estado a éxito con la ubicación y las paradas
-         * 7. Maneja errores de seguridad (SecurityException) mostrando un mensaje de error
-         * 8. Captura excepciones genéricas mostrando un mensaje de error genérico
-         *
-         * **Manejo de errores**:
-         * - Si el servicio de ubicación no está habilitado: [LOCATION_DISABLED]
-         * - [SecurityException]: Se muestra el mensaje de error o "Error loading user location"
-         * - [Exception] genérico: Se muestra "Unknown error occurred while loading the user location"
-         *
-         * @see LOCATION_ERROR
-         * @see UNKNOWN_ERROR
-         * @see LOCATION_DISABLED
+         * Registra el resultado del pedido de permisos y, si hubo alguno otorgado, arranca
+         * la carga. Si solo se otorgó el permiso aproximado, se informa en el estado para
+         * que la pantalla muestre el banner correspondiente.
          */
-        fun loadUserLocationAndStops() {
+        fun onPermissionResult(
+            fineGranted: Boolean,
+            coarseGranted: Boolean,
+        ) {
+            if (!fineGranted && !coarseGranted) {
+                _uiState.value = MapUiState.PermissionDenied
+                return
+            }
+            loadUserLocationAndStops(isApproximate = coarseGranted && !fineGranted)
+        }
+
+        /**
+         * Carga la ubicación del pasajero y las paradas cercanas.
+         *
+         * Si el servicio de ubicación está apagado → [MapUiState.LocationDisabled].
+         * Si no hay una ubicación conocida dentro del timeout → [MapUiState.LocationUnavailable].
+         */
+        fun loadUserLocationAndStops(isApproximate: Boolean = false) {
             viewModelScope.launch {
                 _uiState.value = MapUiState.Loading
 
-                if (!repository.isLocationEnabled()) {
-                    _uiState.value = MapUiState.Error(LOCATION_DISABLED)
-                    return@launch
-                }
-
                 try {
-                    val location = exploreMapUseCase()
-                    val stops = getNearbyStops(location)
+                    if (!locationRepository.isLocationEnabled()) {
+                        _uiState.value = MapUiState.LocationDisabled
+                        return@launch
+                    }
 
-                    _uiState.value = MapUiState.Success(location, stops)
+                    val location = withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) { exploreMapUseCase() }
+                    if (location == null) {
+                        _uiState.value = MapUiState.LocationUnavailable
+                        return@launch
+                    }
+
+                    updateWithStops(location, getNearbyStops(location), isApproximate)
                 } catch (e: SecurityException) {
                     _uiState.value = MapUiState.Error(e.message ?: LOCATION_ERROR)
                 } catch (_: Exception) {
-                    _uiState.value =
-                        MapUiState.Error(UNKNOWN_ERROR)
+                    _uiState.value = MapUiState.Error(UNKNOWN_ERROR)
                 }
             }
         }
 
-        /**
-         * Selecciona una parada de autobús específica en el mapa.
-         *
-         * Esta función:
-         * 1. Obtiene el estado actual a través de [_uiState]
-         * 2. Solo permite seleccionar una parada si el estado es [MapUiState.Success]
-         * 3. Establece la parada seleccionada en el estado de la UI
-         *
-         * @param stopToSelect la parada de autobús a seleccionar.
-         * @see clearSelectedBusStop
-         */
-        fun selectBusStop(stopToSelect: BusStop) {
-            val currentState = _uiState.value
+        /** Carga las paradas alrededor de un punto fijo, sin usar la ubicación del pasajero. */
+        fun exploreManually() {
+            viewModelScope.launch {
+                _uiState.value = MapUiState.Loading
+                try {
+                    updateWithStops(DEFAULT_MANUAL_LOCATION, getNearbyStops(DEFAULT_MANUAL_LOCATION), isApproximate = false)
+                } catch (_: Exception) {
+                    _uiState.value = MapUiState.Error(UNKNOWN_ERROR)
+                }
+            }
+        }
 
-            if (currentState is MapUiState.Success) {
-                _uiState.value = currentState.copy(selectedStop = stopToSelect)
+        /** Filtra las paradas del estado actual mientras el pasajero escribe. */
+        fun onSearchQueryChange(query: String) {
+            currentQuery = query
+            val current = _uiState.value as? MapUiState.Success ?: return
+            _uiState.value = current.copy(filteredStops = filterBusStops(current.busStops, query))
+        }
+
+        /** Persiste una búsqueda enviada en el historial (Enter o chip de historial). */
+        fun submitSearch(query: String) {
+            val trimmed = query.trim()
+            if (trimmed.isBlank()) return
+            viewModelScope.launch {
+                busStopRepository.saveSearchQuery(trimmed)
             }
         }
 
         /**
-         * Elimina la selección de la parada de autobús actual.
-         *
-         * Esta función:
-         * 1. Obtiene el estado actual a través de [_uiState]
-         * 2. Solo permite limpiar la selección si el estado es [MapUiState.Success]
-         * 3. Establece la parada seleccionada a `null` en el estado de la UI
-         *
-         * @see selectBusStop
+         * Selecciona la parada identificada por [stopId], o deselecciona si es `null`.
          */
-        fun clearSelectedBusStop() {
-            val currentState = _uiState.value
+        fun selectBusStop(stopId: Long?) {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            _uiState.value = current.copy(selectedStopId = stopId)
+        }
 
-            if (currentState is MapUiState.Success) {
-                _uiState.value = currentState.copy(selectedStop = null)
-            }
+        private fun updateWithStops(
+            center: LocationData,
+            result: NearbyStopsResult,
+            isApproximate: Boolean,
+        ) {
+            _uiState.value =
+                MapUiState.Success(
+                    center = center,
+                    busStops = result.stops,
+                    filteredStops = filterBusStops(result.stops, currentQuery),
+                    isApproximate = isApproximate,
+                    isFromCache = result.origin == NearbyStopsOrigin.CACHE,
+                    isDemo = result.origin == NearbyStopsOrigin.DEMO,
+                )
         }
     }
-
-private const val LOCATION_ERROR = "Error loading user location"
-private const val UNKNOWN_ERROR = "Unknown error occurred while loading the user location"
-private const val LOCATION_DISABLED = "Location service disabled"

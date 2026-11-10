@@ -13,7 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -53,9 +53,9 @@ fun BusStopCard(
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
-            stop.lines.forEach { line ->
+            stop.busLines.forEach { line ->
                 Text(
-                    text = "${line.code} → ${line.destination}",
+                    text = "Línea ${line.number}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

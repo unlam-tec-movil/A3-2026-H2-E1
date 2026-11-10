@@ -5,58 +5,59 @@ import android.hardware.Sensor
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.OrientationSensorDataSourceImpl
-import dagger.hilt.android.testing.HiltAndroidTest
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
-import junit.framework.TestCase.assertFalse
-import junit.framework.TestCase.assertTrue
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
-import org.junit.jupiter.api.assertNull
-import javax.inject.Inject
+import org.junit.jupiter.api.Test
 
-@Suppress("DEPRECATION")
-@HiltAndroidTest
 class OrientationSensorDataSourceImplTest {
-    @Inject
-    lateinit var dataSource: OrientationSensorDataSourceImpl
+    private val mockContext = mockk<Context>()
+    private val mockSensorManager = mockk<SensorManager>(relaxed = true)
+    private val mockSensor = mockk<Sensor>()
 
-    val mockContext = mockk<Context>()
-    val mockSensorManager = mockk<SensorManager>(relaxed = true)
-    val mockSensor = mockk<Sensor>()
+    @BeforeEach
+    fun setUp() {
+        mockkStatic(SensorManager::class)
+        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) } returns mockSensor
+        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
+        // Sin WindowManager el datasource usa la rotación por defecto (ROTATION_0).
+        every { mockContext.getSystemService(Context.WINDOW_SERVICE) } returns null
+    }
+
+    @AfterEach
+    fun tearDown() {
+        unmockkStatic(SensorManager::class)
+    }
+
+    private fun dataSource() = OrientationSensorDataSourceImpl(mockContext)
 
     @Test
-    @DisplayName("Debería retornar false cuando el sensor de orientación no está disponible")
-    fun shouldReturnFalseWhenOrientationSensorIsNotAvailable() {
-        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns null
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
+    @DisplayName("Debería retornar false cuando el sensor de rotación no está disponible")
+    fun shouldReturnFalseWhenRotationVectorSensorIsNotAvailable() {
+        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) } returns null
 
-        val dataSource = OrientationSensorDataSourceImpl(mockContext)
-        val result = dataSource.isOrientationSensorAvailable()
-        assertFalse(result)
+        assertFalse(dataSource().isOrientationSensorAvailable())
     }
 
     @Test
-    @DisplayName("Debería retornar true cuando el sensor de orientación está disponible")
-    fun shouldReturnTrueWhenOrientationSensorIsAvailable() {
-        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockk<Sensor>()
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
-
-        val dataSource = OrientationSensorDataSourceImpl(mockContext)
-        val result = dataSource.isOrientationSensorAvailable()
-        assertTrue(result)
+    @DisplayName("Debería retornar true cuando el sensor de rotación está disponible")
+    fun shouldReturnTrueWhenRotationVectorSensorIsAvailable() {
+        assertTrue(dataSource().isOrientationSensorAvailable())
     }
 
     @Test
-    @DisplayName("Debería iniciar la escucha cuando el sensor está disponible")
+    @DisplayName("Debería iniciar la escucha del sensor de rotación cuando está disponible")
     fun shouldStartListeningWhenSensorIsAvailable() {
-        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockSensor
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
-
-        val dataSource = OrientationSensorDataSourceImpl(mockContext)
-        dataSource.startListening()
+        dataSource().startListening()
 
         verify { mockSensorManager.registerListener(any(), mockSensor, any()) }
     }
@@ -64,10 +65,7 @@ class OrientationSensorDataSourceImplTest {
     @Test
     @DisplayName("Debería detener la escucha cuando se solicita")
     fun shouldStopListeningWhenRequested() {
-        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockSensor
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
-
-        val dataSource = OrientationSensorDataSourceImpl(mockContext)
+        val dataSource = dataSource()
         dataSource.startListening()
         dataSource.stopListening()
 
@@ -75,33 +73,54 @@ class OrientationSensorDataSourceImplTest {
     }
 
     @Test
-    @DisplayName("Debería actualizar orientationDegrees cuando onSensorChanged recibe un evento del sensor de orientación")
-    fun shouldUpdateOrientationDegreesWhenSensorChanged() {
-        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockSensor
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
+    @DisplayName("Debería actualizar orientationDegrees con el azimut calculado del vector de rotación")
+    fun shouldUpdateOrientationDegreesFromRotationVector() {
+        stubOrientationMath(azimuthDegrees = 45f)
 
-        dataSource = OrientationSensorDataSourceImpl(mockContext)
+        val dataSource = dataSource()
 
-        val expectedAzimuth = 45.0f
+        dataSource.processRotationVectorValues(floatArrayOf(0f, 0f, 0f, 0f, 0f))
 
-        val sampleValues = floatArrayOf(expectedAzimuth, 0.0f, 0.0f)
+        assertEquals(45f, dataSource.orientationDegrees.value)
+    }
 
-        dataSource.processOrientationValuesFromArray(sampleValues)
+    @Test
+    @DisplayName("Debería normalizar azimuts negativos al rango [0, 360)")
+    fun shouldNormalizeNegativeAzimuths() {
+        stubOrientationMath(azimuthDegrees = -90f)
 
-        assertEquals(expectedAzimuth, dataSource.orientationDegrees.value)
+        val dataSource = dataSource()
+
+        dataSource.processRotationVectorValues(floatArrayOf(0f))
+
+        assertEquals(270f, dataSource.orientationDegrees.value)
     }
 
     @Test
     @DisplayName("Debería reiniciar orientationDegrees a null al llamar a stopListening")
     fun shouldResetOrientationDegreesToNullWhenStopListening() {
-        every { mockSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) } returns mockSensor
-        every { mockContext.getSystemService(Context.SENSOR_SERVICE) } returns mockSensorManager
-
-        val dataSource = OrientationSensorDataSourceImpl(mockContext)
-        dataSource.processOrientationValuesFromArray(floatArrayOf(90.0f, 0.0f, 0.0f))
+        stubOrientationMath(azimuthDegrees = 90f)
+        val dataSource = dataSource()
+        dataSource.processRotationVectorValues(floatArrayOf(0f))
 
         dataSource.stopListening()
 
         assertNull(dataSource.orientationDegrees.value)
+    }
+
+    /** Simula la matemática de SensorManager: matriz identidad + azimut dado en grados. */
+    private fun stubOrientationMath(azimuthDegrees: Float) {
+        every { SensorManager.getRotationMatrixFromVector(any(), any()) } answers {
+            val matrix = firstArg<FloatArray>()
+            matrix[0] = 1f
+            matrix[4] = 1f
+            matrix[8] = 1f
+            true
+        }
+        every { SensorManager.getOrientation(any(), any()) } answers {
+            val angles = secondArg<FloatArray>()
+            angles[0] = Math.toRadians(azimuthDegrees.toDouble()).toFloat()
+            angles
+        }
     }
 }

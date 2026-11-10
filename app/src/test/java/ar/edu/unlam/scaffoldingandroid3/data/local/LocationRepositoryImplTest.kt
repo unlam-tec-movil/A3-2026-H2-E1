@@ -9,8 +9,11 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class LocationRepositoryImplTest {
     private val mockDataSource: LocationDataSource = mockk<LocationDataSource>()
@@ -20,53 +23,33 @@ class LocationRepositoryImplTest {
     @DisplayName("Debería retornar LocationData correctamente cuando el data source provee una ubicación válida")
     fun shouldReturnLocationDataWhenDataSourceProvidesValidLocation() =
         runTest {
-            val expectedLatitude = -34.6037
-            val expectedLongitude = -58.3816
-
-            coEvery { mockDataSource.getLastKnowLocation() } returns
+            val expected =
                 LocationData(
-                    Latitude(expectedLatitude),
-                    Longitude(expectedLongitude),
+                    Latitude(-34.6037),
+                    Longitude(-58.3816),
                 )
 
-            val result = repository.getLocationData()
+            coEvery { mockDataSource.getLastKnowLocation() } returns expected
 
-            assertEquals(Latitude(expectedLatitude), result.latitude)
-            assertEquals(Longitude(expectedLongitude), result.longitude)
+            assertEquals(expected, repository.getLocationData())
         }
 
     @Test
-    @DisplayName("Debería retornar la ubicación por defecto (fallback) cuando el data source devuelve null")
-    fun shouldReturnFallbackLocationWhenDataSourceReturnsNull() =
+    @DisplayName("Debería retornar null cuando no hay última ubicación conocida, sin fallback silencioso")
+    fun shouldReturnNullWhenDataSourceReturnsNull() =
         runTest {
             coEvery { mockDataSource.getLastKnowLocation() } returns null
 
-            val expectedFallback =
-                LocationData(
-                    latitude = Latitude(-34.6037),
-                    longitude = Longitude(-58.3816),
-                )
-
-            val result = repository.getLocationData()
-
-            assertEquals(expectedFallback, result)
+            assertNull(repository.getLocationData())
         }
 
     @Test
-    @DisplayName("Debería devolverse la ubicación de fallback si la lectura arroja una SecurityException")
-    fun shouldReturnFallbackLocationIfSecurityExceptionWasThrown() =
+    @DisplayName("Debería propagar la excepción del data source en lugar de enmascararla con una ubicación por defecto")
+    fun shouldPropagateExceptionFromDataSource() =
         runTest {
             coEvery { mockDataSource.getLastKnowLocation() } throws SecurityException()
 
-            val expectedFallback =
-                LocationData(
-                    latitude = Latitude(-34.6037),
-                    longitude = Longitude(-58.3816),
-                )
-
-            val result = repository.getLocationData()
-
-            assertEquals(expectedFallback, result)
+            assertThrows<SecurityException> { repository.getLocationData() }
         }
 
     @Test
@@ -75,8 +58,6 @@ class LocationRepositoryImplTest {
         runTest {
             coEvery { mockDataSource.isLocationEnabled() } returns false
 
-            val result = repository.isLocationEnabled()
-
-            assertEquals(false, result)
+            assertFalse(repository.isLocationEnabled())
         }
 }

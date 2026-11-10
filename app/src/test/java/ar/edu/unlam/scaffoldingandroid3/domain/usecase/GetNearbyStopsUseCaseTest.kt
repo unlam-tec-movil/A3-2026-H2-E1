@@ -1,6 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.domain.usecase
 
-import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.NearbyStopsOrigin
+import ar.edu.unlam.scaffoldingandroid3.domain.model.NearbyStopsResult
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory.DataFactory.busStopList
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory.DataFactory.locationDataInstance
@@ -20,19 +21,23 @@ class GetNearbyStopsUseCaseTest {
     private val location = locationDataInstance()
 
     @Test
-    @DisplayName("Debería obtener una lista de paradas de colectivo cercanas a partir de una ubicación en el mapa")
-    fun shouldGetListOfNearbyBusStopsFromRepository() =
+    @DisplayName("Debería obtener las paradas cercanas y el origen de los datos desde el repositorio")
+    fun shouldGetNearbyStopsWithOriginFromRepository() =
         runTest {
             assertDoesNotThrow {
-                val expectedBusStops = busStopList()
+                val expectedResult =
+                    NearbyStopsResult(
+                        stops = busStopList(),
+                        origin = NearbyStopsOrigin.REMOTE,
+                    )
 
-                coEvery { mockRepository.getNearbyBusStopsByCurrentLocation(any()) } returns expectedBusStops
+                coEvery { mockRepository.getNearbyStops(any(), any()) } returns expectedResult
 
                 val result = useCase(location)
 
-                assertEquals(expectedBusStops, result)
+                assertEquals(expectedResult, result)
 
-                coVerify(exactly = 1) { mockRepository.getNearbyBusStopsByCurrentLocation(location) }
+                coVerify(exactly = 1) { mockRepository.getNearbyStops(location, any()) }
             }
         }
 
@@ -41,21 +46,25 @@ class GetNearbyStopsUseCaseTest {
     fun shouldNotThrowExceptionIfBusStopsListIsEmpty() =
         runTest {
             assertDoesNotThrow {
-                val emptyList = emptyList<BusStop>()
+                val expectedResult =
+                    NearbyStopsResult(
+                        stops = emptyList(),
+                        origin = NearbyStopsOrigin.DEMO,
+                    )
 
-                coEvery { mockRepository.getNearbyBusStopsByCurrentLocation(any()) } returns emptyList
+                coEvery { mockRepository.getNearbyStops(any(), any()) } returns expectedResult
 
                 val result = useCase(location)
 
-                assertEquals(emptyList, result)
+                assertEquals(expectedResult, result)
             }
         }
 
     @Test
-    @DisplayName("Debería propagar la excepción si no se asignan permisos")
-    fun shouldThrowSecurityExceptionIfPermissionIsDenied() =
+    @DisplayName("Debería propagar la excepción del repositorio")
+    fun shouldThrowSecurityExceptionIfRepositoryFails() =
         runTest {
-            coEvery { mockRepository.getNearbyBusStopsByCurrentLocation(any()) } throws SecurityException()
+            coEvery { mockRepository.getNearbyStops(any(), any()) } throws SecurityException()
 
             assertThrows<SecurityException> { useCase(location) }
         }

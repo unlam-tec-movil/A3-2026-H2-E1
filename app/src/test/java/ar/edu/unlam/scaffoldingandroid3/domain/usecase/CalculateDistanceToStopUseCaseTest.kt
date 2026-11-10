@@ -12,13 +12,13 @@ class CalculateDistanceToStopUseCaseTest {
     private val endLocation = TestDataFactory.anotherLocationDataInstance()
 
     @Test
-    @DisplayName("Debería calcular la distancia hasta el punto de destino")
-    fun shouldInvokeFromStartingPointToEndingPointInKilometers() =
+    @DisplayName("Debería calcular la distancia en metros hasta el punto de destino")
+    fun shouldInvokeFromStartingPointToEndingPointInMeters() =
         runTest {
-            val expectedDistance = 0.05
+            val expectedDistance = 49.5
 
             val calculatedDistance = useCase.invoke(startLocation, endLocation)
 
-            assertEquals(expectedDistance, calculatedDistance, 0.001)
+            assertEquals(expectedDistance, calculatedDistance, 0.1)
         }
 }

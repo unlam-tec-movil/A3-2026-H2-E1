@@ -1,7 +1,6 @@
 package ar.edu.unlam.scaffoldingandroid3.data.mapper
 
 import android.location.Location
-import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
 import io.mockk.every
 import io.mockk.mockk

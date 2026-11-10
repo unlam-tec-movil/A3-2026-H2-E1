@@ -1,13 +1,13 @@
 package ar.edu.unlam.scaffoldingandroid3.factory
 
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.BusLineStatus
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.StopStatus
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
-import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLineStatus
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusRoute
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
-import ar.edu.unlam.scaffoldingandroid3.domain.model.StopStatus
 
 class TestDataFactory {
     companion object DataFactory {

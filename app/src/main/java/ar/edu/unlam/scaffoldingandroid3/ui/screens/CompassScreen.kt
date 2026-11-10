@@ -1,6 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -27,22 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.data.LocationRepo
-import ar.edu.unlam.scaffoldingandroid3.data.OrientationRepo
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
-import kotlinx.coroutines.withTimeoutOrNull
-
-private const val LOCATION_TIMEOUT_MILLIS = 10_000L
+import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ar.edu.unlam.scaffoldingandroid3.ui.uistate.CompassUiState
+import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.CompassViewModel
 
 /**
  * H02: el pasajero se orienta hacia una parada.
@@ -51,40 +46,29 @@ private const val LOCATION_TIMEOUT_MILLIS = 10_000L
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompassScreen(
-    stopName: String,
-    stopLocation: GeoPoint,
     onBack: () -> Unit,
+    viewModel: CompassViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val orientationRepo = remember(context) { OrientationRepo(context) }
-    val locationRepo = remember(context) { LocationRepo(context) }
-
-    val hasSensor = remember { orientationRepo.hasSensor() }
-    val azimuthFlow = remember { orientationRepo.getAzimuth() }
-    val deviceAzimuth by azimuthFlow.collectAsState(initial = 0f)
-
-    var hasPermission by remember { mutableStateOf(locationRepo.hasPermission()) }
-    var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
-    var locating by remember { mutableStateOf(false) }
-    var attempt by remember { mutableIntStateOf(0) }
+    val uiState by viewModel.uiState.collectAsState()
 
     val permissionLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
-        ) { granted -> hasPermission = granted }
+        ) { granted -> viewModel.onPermissionResult(granted) }
 
-    LaunchedEffect(Unit) {
-        if (!hasPermission) {
+    fun resolveLocationPermission() {
+        val fine =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        if (fine) {
+            viewModel.locateUser()
+        } else {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
-    LaunchedEffect(hasPermission, attempt) {
-        if (!hasPermission) return@LaunchedEffect
-        locating = true
-        currentLocation = withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) { locationRepo.currentLocation() }
-        locating = false
-    }
+    LaunchedEffect(Unit) { resolveLocationPermission() }
 
     Scaffold(
         topBar = {
@@ -110,45 +94,47 @@ fun CompassScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            val location = currentLocation
-            when {
-                !hasSensor ->
+            when (val state = uiState) {
+                CompassUiState.SensorUnavailable -> {
                     CompassMessage(
                         message = "La brújula no está disponible en este dispositivo.",
                         actionLabel = "Ver parada en el mapa",
                         onAction = onBack,
                     )
+                }
 
-                !hasPermission ->
+                CompassUiState.PermissionDenied -> {
                     CompassMessage(
                         message = "Necesitamos tu ubicación para indicarte la dirección a la parada.",
                         actionLabel = "Permitir ubicación",
-                        onAction = {
-                            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                        },
+                        onAction = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
                     )
+                }
 
-                locating ->
+                CompassUiState.Locating -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(text = "Obteniendo tu ubicación…")
                     }
+                }
 
-                location == null ->
+                CompassUiState.LocationUnavailable -> {
                     CompassMessage(
                         message = "No pudimos obtener tu ubicación.",
                         actionLabel = "Reintentar",
-                        onAction = { attempt++ },
+                        onAction = { viewModel.locateUser() },
                     )
+                }
 
-                else ->
+                is CompassUiState.Ready -> {
                     CompassContent(
-                        stopName = stopName,
-                        distanceMeters = location.distanceTo(stopLocation),
-                        targetBearing = location.bearingTo(stopLocation),
-                        deviceAzimuth = deviceAzimuth,
+                        stopName = viewModel.stopName,
+                        distanceMeters = state.distanceMeters,
+                        targetBearing = state.targetBearingDegrees,
+                        deviceAzimuth = state.deviceAzimuthDegrees,
                     )
+                }
             }
         }
     }
@@ -158,12 +144,12 @@ fun CompassScreen(
 private fun CompassContent(
     stopName: String,
     distanceMeters: Double,
-    targetBearing: Float,
+    targetBearing: Double,
     deviceAzimuth: Float,
 ) {
     // Diferencia más corta entre el rumbo a la parada y hacia dónde apunta el teléfono.
-    val delta = (targetBearing - deviceAzimuth + 360f) % 360f
-    val targetRotation = if (delta > 180f) delta - 360f else delta
+    val delta = (targetBearing - deviceAzimuth.toDouble() + 360.0) % 360.0
+    val targetRotation = (if (delta > 180.0) delta - 360.0 else delta).toFloat()
     val animatedAngle by animateFloatAsState(
         targetValue = targetRotation,
         label = "arrowAngle",

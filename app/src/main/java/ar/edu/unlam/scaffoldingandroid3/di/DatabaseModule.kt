@@ -25,7 +25,7 @@ object DatabaseModule {
                 context,
                 AppDatabase::class.java,
                 "voy_en_bondi.db",
-            ).fallbackToDestructiveMigration()
+            ).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides

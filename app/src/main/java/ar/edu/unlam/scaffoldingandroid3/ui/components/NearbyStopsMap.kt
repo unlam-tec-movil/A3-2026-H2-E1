@@ -17,8 +17,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.projectedMetersFrom
 import kotlin.math.min
 
 /** Radio, en metros, que entra en el mapa. */
@@ -30,9 +31,9 @@ private const val MAP_RADIUS_METERS = 900f
  */
 @Composable
 fun NearbyStopsMap(
-    userLocation: GeoPoint,
+    userLocation: LocationData,
     stops: List<BusStop>,
-    selectedStopId: String?,
+    selectedStopId: Long?,
     onStopClick: (BusStop) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -50,7 +51,7 @@ fun NearbyStopsMap(
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val positions =
         remember(userLocation, stops) {
-            stops.associate { stop -> stop.id to stop.location.projectedMetersFrom(userLocation) }
+            stops.associate { stop -> stop.stopId to stop.locationData.projectedMetersFrom(userLocation) }
         }
 
     Canvas(
@@ -66,7 +67,7 @@ fun NearbyStopsMap(
                         val tapped =
                             stops
                                 .map { stop ->
-                                    val (north, east) = positions.getValue(stop.id)
+                                    val (north, east) = positions.getValue(stop.stopId)
                                     stop to
                                         Offset(
                                             center.x + (east * scale).toFloat(),
@@ -99,13 +100,13 @@ fun NearbyStopsMap(
         drawCircle(primary, radius = userRadius, center = center)
 
         stops.forEach { stop ->
-            val (north, east) = positions.getValue(stop.id)
+            val (north, east) = positions.getValue(stop.stopId)
             val position =
                 Offset(
                     center.x + (east * scale).toFloat(),
                     center.y - (north * scale).toFloat(),
                 )
-            val isSelected = stop.id == selectedStopId
+            val isSelected = stop.stopId == selectedStopId
             val radius = if (isSelected) stopRadius * 1.4f else stopRadius
             drawCircle(Color.White, radius = radius + 3.dp.toPx(), center = position)
             drawCircle(if (isSelected) primary else secondary, radius = radius, center = position)

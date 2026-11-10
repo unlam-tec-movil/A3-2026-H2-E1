@@ -8,8 +8,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
@@ -22,9 +22,9 @@ import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
 fun GoogleMapView(
-    userLocation: GeoPoint,
+    userLocation: LocationData,
     stops: List<BusStop>,
-    selectedStopId: String?,
+    selectedStopId: Long?,
     onStopClick: (BusStop) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -43,7 +43,7 @@ fun GoogleMapView(
         return
     }
 
-    val userLatLng = remember(userLocation) { LatLng(userLocation.latitude, userLocation.longitude) }
+    val userLatLng = remember(userLocation) { LatLng(userLocation.latitude.value, userLocation.longitude.value) }
     val cameraPositionState =
         rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(userLatLng, 15f)
@@ -76,11 +76,11 @@ fun GoogleMapView(
             Marker(
                 state =
                     remember(
-                        stop.id,
-                        stop.location,
-                    ) { MarkerState(position = LatLng(stop.location.latitude, stop.location.longitude)) },
+                        stop.stopId,
+                        stop.locationData,
+                    ) { MarkerState(position = LatLng(stop.locationData.latitude.value, stop.locationData.longitude.value)) },
                 title = stop.name,
-                snippet = stop.lines.joinToString(" · ") { it.code },
+                snippet = stop.busLines.joinToString(" · ") { line -> "Línea ${line.number}" },
                 onClick = {
                     onStopClick(stop)
                     false
