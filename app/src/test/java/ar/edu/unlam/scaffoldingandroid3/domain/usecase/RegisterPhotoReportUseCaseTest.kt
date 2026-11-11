@@ -10,6 +10,7 @@ import io.mockk.runs
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.assertThrows
 
 class RegisterPhotoReportUseCaseTest {
     private val mockRepository = mockk<PhotoReportRepository>()
@@ -25,5 +26,14 @@ class RegisterPhotoReportUseCaseTest {
             useCase(sampleReport)
 
             coVerify(exactly = 1) { mockRepository.saveReport(sampleReport) }
+        }
+
+    @Test
+    @DisplayName("Debería propagar la excepción lanzada desde el repositorio al fallar")
+    fun shouldPropagateExceptionThrownFromRepository() =
+        runTest {
+            coEvery { mockRepository.saveReport(sampleReport) } throws Exception("Database error")
+
+            assertThrows<Exception> { useCase(sampleReport) }
         }
 }
