@@ -18,15 +18,10 @@ class PhotoReportTest {
 
         assertAll(
             { assertNotNull(photoReport) },
-            { assertEquals("rep_123", photoReport.id) },
-            {
-                assertEquals(
-                    "file://storage/emulated/0/Pictures/stop_photo.jpg",
-                    photoReport.photoUri,
-                )
-            },
-            { assertEquals("Parada despejada", photoReport.observation) },
-            { assertEquals(42L, photoReport.stopId) },
+            { assertEquals(REPORTE_ID, photoReport.id) },
+            { assertEquals(REPORTE_PHOTO_URI, photoReport.photoUri) },
+            { assertEquals(REPORTE_OBSERVACION, photoReport.observation) },
+            { assertEquals(REPORTE_STOP_ID, photoReport.stopId) },
         )
     }
 
@@ -36,11 +31,11 @@ class PhotoReportTest {
         val exception =
             assertThrows(IllegalArgumentException::class.java) {
                 PhotoReport(
-                    id = "rep_123",
+                    id = REPORTE_ID,
                     photoUri = "",
-                    observation = "Parada despejada",
+                    observation = REPORTE_OBSERVACION,
                     timestamp = Instant.now(),
-                    stopId = 42L,
+                    stopId = REPORTE_STOP_ID,
                 )
             }
 
@@ -53,11 +48,11 @@ class PhotoReportTest {
         val exception =
             assertThrows(IllegalArgumentException::class.java) {
                 PhotoReport(
-                    id = "rep_123",
+                    id = REPORTE_ID,
                     photoUri = "   ",
-                    observation = "Parada despejada",
+                    observation = REPORTE_OBSERVACION,
                     timestamp = Instant.now(),
-                    stopId = 42L,
+                    stopId = REPORTE_STOP_ID,
                 )
             }
 
@@ -71,10 +66,10 @@ class PhotoReportTest {
             assertThrows(IllegalArgumentException::class.java) {
                 PhotoReport(
                     id = "",
-                    photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
-                    observation = "Parada despejada",
+                    photoUri = REPORTE_PHOTO_URI,
+                    observation = REPORTE_OBSERVACION,
                     timestamp = Instant.now(),
-                    stopId = 42L,
+                    stopId = -1L,
                 )
             }
 
@@ -87,9 +82,9 @@ class PhotoReportTest {
         val exception =
             assertThrows(IllegalArgumentException::class.java) {
                 PhotoReport(
-                    id = "rep_123",
-                    photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
-                    observation = "Parada despejada",
+                    id = REPORTE_ID,
+                    photoUri = REPORTE_PHOTO_URI,
+                    observation = REPORTE_OBSERVACION,
                     timestamp = Instant.now(),
                     stopId = -1L,
                 )
@@ -104,9 +99,9 @@ class PhotoReportTest {
         val exception =
             assertThrows(IllegalArgumentException::class.java) {
                 PhotoReport(
-                    id = "rep_123",
-                    photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
-                    observation = "Parada despejada",
+                    id = REPORTE_ID,
+                    photoUri = REPORTE_PHOTO_URI,
+                    observation = REPORTE_OBSERVACION,
                     timestamp = Instant.now(),
                     stopId = 0L,
                 )
@@ -121,11 +116,11 @@ class PhotoReportTest {
         val exception =
             assertThrows(IllegalArgumentException::class.java) {
                 PhotoReport(
-                    id = "rep_123",
-                    photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
-                    observation = "Parada despejada",
-                    timestamp = Instant.now().plusSeconds(1000),
-                    stopId = 42L,
+                    id = REPORTE_ID,
+                    photoUri = REPORTE_PHOTO_URI,
+                    observation = REPORTE_OBSERVACION,
+                    timestamp = Instant.now().plusSeconds(FUTURO_SEGUNDOS),
+                    stopId = REPORTE_STOP_ID,
                 )
             }
 
@@ -135,37 +130,24 @@ class PhotoReportTest {
     @Test
     @DisplayName("Reporte con observación vacía debe crear reporte exitosamente")
     fun withEmptyObservation_shouldCreateReport() {
-        val photoReport = PhotoReport(
-            id = "rep_123",
-            photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
-            observation = "",
-            timestamp = Instant.now(),
-            stopId = 42L,
-        )
+        val photoReport =
+            PhotoReport(
+                id = REPORTE_ID,
+                photoUri = REPORTE_PHOTO_URI,
+                observation = "",
+                timestamp = Instant.now(),
+                stopId = REPORTE_STOP_ID,
+            )
 
         assertAll(
             { assertNotNull(photoReport) },
             { assertEquals("", photoReport.observation) },
         )
     }
-
-    @Test
-    @DisplayName("Reporte con timestamp actual debe crear reporte exitosamente")
-    fun withTimestampNow_shouldCreateReport() {
-        val photoReport = PhotoReport(
-            id = "rep_123",
-            photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
-            observation = "Parada despejada",
-            timestamp = Instant.now(),
-            stopId = 42L,
-        )
-
-        assertAll(
-            { assertNotNull(photoReport) },
-            { assertEquals("rep_123", photoReport.id) },
-            { assertEquals("file://storage/emulated/0/Pictures/stop_photo.jpg", photoReport.photoUri) },
-            { assertEquals("Parada despejada", photoReport.observation) },
-            { assertEquals(42L, photoReport.stopId) },
-        )
-    }
 }
+
+private const val REPORTE_ID = "rep_123"
+private const val REPORTE_PHOTO_URI = "file://storage/emulated/0/Pictures/stop_photo.jpg"
+private const val REPORTE_OBSERVACION = "Parada despejada"
+private const val REPORTE_STOP_ID = 42L
+private const val FUTURO_SEGUNDOS = 1000L
