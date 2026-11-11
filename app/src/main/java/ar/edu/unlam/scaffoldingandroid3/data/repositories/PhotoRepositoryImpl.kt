@@ -1,0 +1,19 @@
+package ar.edu.unlam.scaffoldingandroid3.data.repositories
+
+import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSource
+import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
+import kotlinx.coroutines.flow.StateFlow
+import javax.inject.Inject
+
+class PhotoRepositoryImpl
+    @Inject
+    constructor(
+        private val dataSource: PhotoReportDataSource,
+    ) : PhotoReportRepository {
+        override suspend fun saveReport(report: PhotoReport) {
+            dataSource.insertReport(report)
+        }
+
+        override suspend fun getReportsByStopId(stopId: Long): StateFlow<PhotoReport> = dataSource.getReportsByStopId(stopId)
+    }
