@@ -8,6 +8,8 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
+import java.time.Instant
 
 class TestDataFactory {
     companion object DataFactory {
@@ -133,5 +135,15 @@ class TestDataFactory {
                 ),
             )
         }
+
+        @JvmStatic
+        fun defaultPhotoReportInstance(): PhotoReport =
+            PhotoReport(
+                id = "rep_123",
+                photoUri = "file://storage/emulated/0/Pictures/stop_photo.jpg",
+                observation = "Parada despejada",
+                timestamp = Instant.now(),
+                stopId = 42L,
+            )
     }
 }
