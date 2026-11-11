@@ -13,9 +13,9 @@ data class PhotoReport(
     val stopId: Long,
 ) {
     init {
-        require(photoUri.isNotBlank()) { "photoUri no puede estar vacío" }
-        require(id.isNotBlank()) { "id no puede estar vacío" }
-        require(stopId > 0) { "stopId debe ser mayor a 0" }
+        require(photoUri.isNotBlank()) { "photoUri no puede estar vacío o en blanco" }
+        require(id.isNotBlank()) { "id no puede estar vacío o en blanco" }
+        require(stopId > 0) { "stopId debe ser positivo (mayor a 0)" }
         require(timestamp <= Instant.now()) { "timestamp no puede estar en el futuro" }
     }
 }
