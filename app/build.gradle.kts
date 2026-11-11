@@ -40,6 +40,15 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }
 
 kotlin {
@@ -58,22 +67,26 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     testImplementation(libs.junit)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.junit.vintage.engine)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.compose.ui.test)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    // Dagger + Hilt
     implementation(libs.google.dagger.hilt.android)
     ksp(libs.google.dagger.hilt.android.compiler)
     implementation(libs.google.dagger.hilt.android.testing)
     implementation(libs.androidx.hilt.navigation.compose)
-
-    // Coil
     implementation(libs.coil)
-
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.google.play.services.location)
+    implementation(libs.kotlinx.coroutines.play.services)
+    testImplementation(libs.turbine)
 }
