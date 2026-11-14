@@ -15,5 +15,5 @@ class PhotoRepositoryImpl
             dataSource.insertReport(report)
         }
 
-        override suspend fun getReportsByStopId(stopId: Long): StateFlow<PhotoReport> = dataSource.getReportsByStopId(stopId)
+        override suspend fun getReportsByStopId(stopId: Long): StateFlow<List<PhotoReport>> = dataSource.getReportsByStopId(stopId)
     }

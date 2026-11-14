@@ -11,5 +11,5 @@ interface PhotoReportDao {
     suspend fun insertReport(entity: PhotoReportCacheEntity)
 
     @Query("SELECT * FROM photo_reports WHERE stopId = :stopId ORDER BY timestamp DESC")
-    fun getReportsByStopId(stopId: Long): Flow<PhotoReportCacheEntity>
+    fun getReportsByStopId(stopId: Long): Flow<List<PhotoReportCacheEntity>>
 }

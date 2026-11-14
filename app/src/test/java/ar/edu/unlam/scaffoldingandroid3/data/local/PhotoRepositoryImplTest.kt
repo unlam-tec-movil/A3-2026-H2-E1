@@ -35,7 +35,7 @@ class PhotoRepositoryImplTest {
     @DisplayName("Debería obtener un reporte fotográfico existente desde el repositorio mediante su ID")
     fun shouldGetPhotoReportByIdIfExists() =
         runTest {
-            val stateFlow = MutableStateFlow(sampleReport)
+            val stateFlow = MutableStateFlow(listOf(sampleReport))
 
             coEvery { dataSource.getReportsByStopId(sampleReport.stopId) } returns stateFlow
 

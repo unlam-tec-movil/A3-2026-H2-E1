@@ -6,5 +6,5 @@ import kotlinx.coroutines.flow.StateFlow
 interface PhotoReportRepository {
     suspend fun saveReport(report: PhotoReport)
 
-    suspend fun getReportsByStopId(stopId: Long): StateFlow<PhotoReport>
+    suspend fun getReportsByStopId(stopId: Long): StateFlow<List<PhotoReport>>
 }
