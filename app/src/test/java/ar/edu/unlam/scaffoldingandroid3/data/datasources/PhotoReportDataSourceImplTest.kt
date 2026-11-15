@@ -3,6 +3,7 @@ package ar.edu.unlam.scaffoldingandroid3.data.datasources
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.dao.PhotoReportDao
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.entities.PhotoReportCacheEntity
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSourceImpl.PhotoReportDataSourceImpl
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.toDomain
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -10,6 +11,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -37,6 +39,8 @@ class PhotoReportDataSourceImplTest {
             datasource.insertReport(sampleReport)
 
             coVerify(exactly = 1) { datasource.insertReport(sampleReport) }
+
+            assertEquals(sampleReport, expectedPhotoReportEntity.toDomain())
         }
 
     @Test
