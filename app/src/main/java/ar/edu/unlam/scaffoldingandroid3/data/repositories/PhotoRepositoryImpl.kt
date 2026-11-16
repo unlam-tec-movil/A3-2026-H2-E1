@@ -3,7 +3,7 @@ package ar.edu.unlam.scaffoldingandroid3.data.repositories
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSource
 import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class PhotoRepositoryImpl
@@ -15,5 +15,5 @@ class PhotoRepositoryImpl
             dataSource.insertReport(report)
         }
 
-        override suspend fun getReportsByStopId(stopId: Long): StateFlow<List<PhotoReport>> = dataSource.getReportsByStopId(stopId)
+        override suspend fun getReportsByStopId(stopId: Long): Flow<List<PhotoReport>> = dataSource.getReportsByStopId(stopId)
     }
