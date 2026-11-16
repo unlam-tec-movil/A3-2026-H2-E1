@@ -20,7 +20,7 @@ import kotlin.time.toJavaInstant
  * - [timestamp]: Se convierte de [Instant] a milisegundos usando [toEpochMilli()]
  * - [stopId]: Se mantiene igual
  *
- * @param photoReport El modelo de dominio a convertir a entidad.
+ * @receiver El modelo de dominio a convertir a entidad.
  * @return Una nueva instancia de [PhotoReportCacheEntity] con los datos mapeados.
  * @see PhotoReport
  * @see PhotoReportCacheEntity
@@ -49,7 +49,7 @@ fun PhotoReport.toEntity(): PhotoReportCacheEntity =
  * - [timestamp]: Se convierte de milisegundos a [Instant] usando [Instant.fromEpochMilliseconds()]
  * - [stopId]: Se mantiene igual
  *
- * @param photoReportCacheEntity La entidad de caché a convertir a modelo de dominio.
+ * @receiver La entidad de caché a convertir a modelo de dominio.
  * @return Un nuevo modelo de dominio [PhotoReport] con los datos mapeados.
  * @see PhotoReportCacheEntity
  * @see PhotoReport
