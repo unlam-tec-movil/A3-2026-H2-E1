@@ -3,13 +3,17 @@ package ar.edu.unlam.scaffoldingandroid3.data.datasources
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.dao.PhotoReportDao
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.entities.PhotoReportCacheEntity
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSourceImpl.PhotoReportDataSourceImpl
-import ar.edu.unlam.scaffoldingandroid3.data.mapper.toDomain
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.toEntity
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
@@ -38,31 +42,37 @@ class PhotoReportDataSourceImplTest {
 
             datasource.insertReport(sampleReport)
 
-            coVerify(exactly = 1) { datasource.insertReport(sampleReport) }
-
-            assertEquals(sampleReport, expectedPhotoReportEntity.toDomain())
+            coVerify(exactly = 1) { dao.insertReport(expectedPhotoReportEntity) }
         }
 
     @Test
     @DisplayName("Debería propagar la excepción lanzada por el DAO al insertar")
     fun insertReport_shouldPropagateDaoException() =
         runTest {
-            coEvery { dao.insertReport(any()) } throws Exception("INSERT error on DB")
+            coEvery { dao.insertReport(any()) } throws IllegalStateException("INSERT error on DB")
 
-            assertThrows<Exception> { datasource.insertReport(sampleReport) }
+            assertThrows<IllegalStateException> { datasource.insertReport(sampleReport) }
 
             coVerify(exactly = 1) { dao.insertReport(any()) }
         }
 
     @Test
     @DisplayName("Debería consultar el DAO con el stopId solicitado")
-    fun getReportsByStopId_shouldQueryDaoWithRequestedStopId() {
-    }
+    fun getReportsByStopId_shouldQueryDaoWithRequestedStopId() =
+        runTest {
+            val expectedEmission = flowOf(listOf(sampleReport.toEntity()))
 
-    @Test
-    @DisplayName("Debería emitir los reportes mapeados al modelo de dominio")
-    fun getReportsByStopId_shouldEmitReportsMappedToDomain() {
-    }
+            coEvery { dao.getReportsByStopId(sampleReport.stopId) } returns expectedEmission
+
+            val result = datasource.getReportsByStopId(sampleReport.stopId).first()
+
+            assertEquals(1, result.size)
+            assertEquals(sampleReport.id, result.first().id)
+            assertEquals(sampleReport.photoUri, result.first().photoUri)
+            assertEquals(sampleReport.observation, result.first().observation)
+            assertEquals(sampleReport.stopId, result.first().stopId)
+            assertEquals(sampleReport.timestamp.toEpochMilli(), result.first().timestamp.toEpochMilli())
+        }
 
     @Test
     @DisplayName("Debería emitir nuevamente cuando el DAO publica una actualización")
@@ -71,21 +81,14 @@ class PhotoReportDataSourceImplTest {
 
     @Test
     @DisplayName("Debería emitir una lista vacía cuando la parada no tiene reportes")
-    fun getReportsByStopId_shouldEmitEmptyListWhenStopHasNoReports() {
-    }
+    fun getReportsByStopId_shouldEmitEmptyListWhenStopHasNoReports() =
+        runTest {
+            val emptyFlow: Flow<List<PhotoReportCacheEntity>> = flowOf(listOf())
 
-    @Test
-    @DisplayName("Debería exponer el valor actual sin requerir un colector")
-    fun getReportsByStopId_shouldExposeCurrentValueWithoutCollector() {
-    }
+            coEvery { dao.getReportsByStopId(sampleReport.stopId) } returns emptyFlow
 
-    @Test
-    @DisplayName("Debería compartir una única suscripción al DAO entre varios colectores")
-    fun getReportsByStopId_shouldShareSingleUpstreamSubscriptionAcrossCollectors() {
-    }
+            val result = datasource.getReportsByStopId(sampleReport.stopId).first()
 
-    @Test
-    @DisplayName("Debería propagar a los colectores el error emitido por el flujo del DAO")
-    fun getReportsByStopId_shouldPropagateDaoFlowErrorToCollectors() {
-    }
+            assertEquals(0, result.count())
+        }
 }
