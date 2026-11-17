@@ -6,7 +6,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
-class PhotoRepositoryImpl
+class PhotoReportRepositoryImpl
     @Inject
     constructor(
         private val dataSource: PhotoReportDataSource,

@@ -1,7 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.data.local
 
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSource
-import ar.edu.unlam.scaffoldingandroid3.data.repositories.PhotoRepositoryImpl
+import ar.edu.unlam.scaffoldingandroid3.data.repositories.PhotoReportRepositoryImpl
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory.DataFactory.defaultPhotoReportInstance
 import io.mockk.coEvery
@@ -15,9 +15,9 @@ import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 
-class PhotoRepositoryImplTest {
+class PhotoReportRepositoryImplTest {
     private val dataSource = mockk<PhotoReportDataSource>()
-    private val repository: PhotoReportRepository = PhotoRepositoryImpl(dataSource)
+    private val repository: PhotoReportRepository = PhotoReportRepositoryImpl(dataSource)
     val sampleReport = defaultPhotoReportInstance()
 
     @Test
