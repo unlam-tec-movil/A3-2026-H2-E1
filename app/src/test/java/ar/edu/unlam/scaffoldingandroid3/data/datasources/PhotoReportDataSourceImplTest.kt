@@ -4,26 +4,27 @@ import ar.edu.unlam.scaffoldingandroid3.data.database.room.dao.PhotoReportDao
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.entities.PhotoReportCacheEntity
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSourceImpl.PhotoReportDataSourceImpl
 import ar.edu.unlam.scaffoldingandroid3.data.mapper.toEntity
-import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
+import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory.DataFactory.defaultPhotoReportInstance
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.assertThrows
 
 class PhotoReportDataSourceImplTest {
     private val dao = mockk<PhotoReportDao>()
     private val datasource = PhotoReportDataSourceImpl(dao)
-    private val sampleReport = TestDataFactory.defaultPhotoReportInstance()
+    private val sampleReport = defaultPhotoReportInstance()
 
     @Test
     @DisplayName("Debería persistir en el DAO la entidad mapeada desde el dominio")
@@ -71,13 +72,51 @@ class PhotoReportDataSourceImplTest {
             assertEquals(sampleReport.photoUri, result.first().photoUri)
             assertEquals(sampleReport.observation, result.first().observation)
             assertEquals(sampleReport.stopId, result.first().stopId)
-            assertEquals(sampleReport.timestamp.toEpochMilli(), result.first().timestamp.toEpochMilli())
+            assertEquals(
+                sampleReport.timestamp.toEpochMilli(),
+                result.first().timestamp.toEpochMilli(),
+            )
         }
 
     @Test
     @DisplayName("Debería emitir nuevamente cuando el DAO publica una actualización")
-    fun getReportsByStopId_shouldEmitSubsequentDaoUpdates() {
-    }
+    fun getReportsByStopId_shouldEmitSubsequentDaoUpdates() =
+        runTest {
+            val firstReport = sampleReport
+            val secondReport = firstReport.copy(id = "rep_999")
+
+            coEvery { dao.getReportsByStopId(sampleReport.stopId) } returns
+                flowOf(
+                    listOf(firstReport.toEntity()),
+                    listOf(firstReport.toEntity(), secondReport.toEntity()),
+                )
+
+            val result = datasource.getReportsByStopId(sampleReport.stopId).toList()
+
+            assertAll(
+                { assertEquals(2, result.size) },
+                {
+                    assertEquals(firstReport.id, result[0][0].id)
+                    assertEquals(firstReport.photoUri, result[0][0].photoUri)
+                    assertEquals(firstReport.observation, result[0][0].observation)
+                    assertEquals(firstReport.stopId, result[0][0].stopId)
+                    assertEquals(
+                        firstReport.timestamp.toEpochMilli(),
+                        result[0][0].timestamp.toEpochMilli(),
+                    )
+                },
+                {
+                    assertEquals(secondReport.id, result[1][1].id)
+                    assertEquals(secondReport.photoUri, result[1][1].photoUri)
+                    assertEquals(secondReport.observation, result[1][1].observation)
+                    assertEquals(secondReport.stopId, result[1][1].stopId)
+                    assertEquals(
+                        secondReport.timestamp.toEpochMilli(),
+                        result[1][0].timestamp.toEpochMilli(),
+                    )
+                },
+            )
+        }
 
     @Test
     @DisplayName("Debería emitir una lista vacía cuando la parada no tiene reportes")
