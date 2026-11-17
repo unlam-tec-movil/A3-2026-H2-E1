@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
 
-class MapExploreViewModelTest {
+class NearbyStopsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -36,11 +36,11 @@ class MapExploreViewModelTest {
     private val filterBusStops = FilterBusStops()
     private val busStopRepository = mockk<BusStopRepository>()
     private val repository = mockk<LocationRepository>()
-    private lateinit var viewModel: MapViewModel
+    private lateinit var viewModel: NearbyStopsScreenViewModel
 
-    private fun createViewModel(): MapViewModel {
+    private fun createViewModel(): NearbyStopsScreenViewModel {
         every { busStopRepository.getRecentSearches() } returns flowOf(emptyList())
-        return MapViewModel(exploreMapUseCase, getNearbyStops, filterBusStops, busStopRepository, repository)
+        return NearbyStopsScreenViewModel(exploreMapUseCase, getNearbyStops, filterBusStops, busStopRepository, repository)
     }
 
     @Test

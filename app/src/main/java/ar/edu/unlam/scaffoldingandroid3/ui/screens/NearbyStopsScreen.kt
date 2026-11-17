@@ -61,11 +61,11 @@ import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.GoogleMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
-import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
+import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.NearbyStopsScreenViewModel
 
 @Composable
 fun NearbyStopsScreen(
-    viewModel: MapViewModel = hiltViewModel(),
+    viewModel: NearbyStopsScreenViewModel = hiltViewModel(),
     onNavigateToCompass: (BusStop) -> Unit = {},
 ) {
     val context = LocalContext.current
