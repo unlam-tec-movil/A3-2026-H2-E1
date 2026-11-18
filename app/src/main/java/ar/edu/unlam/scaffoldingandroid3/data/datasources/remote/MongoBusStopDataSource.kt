@@ -29,7 +29,10 @@ class MongoBusStopDataSource
                         Document(
                             $$"$geometry",
                             Document("type", "Point")
-                                .append("coordinates", listOf(center.longitude.value, center.latitude.value)),
+                                .append(
+                                    "coordinates",
+                                    listOf(center.longitude.value, center.latitude.value),
+                                ),
                         ).append($$"$maxDistance", radiusMeters),
                     ),
                 )
