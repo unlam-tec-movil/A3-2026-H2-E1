@@ -22,17 +22,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -50,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -78,7 +72,6 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
 
     var selectedStopId by remember { mutableStateOf<String?>(null) }
     var focusTrigger by remember { mutableIntStateOf(0) }
-    var selectedTab by rememberSaveable { mutableStateOf(HomeTab.Map) }
     var query by rememberSaveable { mutableStateOf("") }
     var submittedQuery by rememberSaveable { mutableStateOf("") }
     var attempt by remember { mutableIntStateOf(0) }
@@ -137,13 +130,6 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                     viewModel.onSearchSubmitted(it)
                 },
                 recentSearches = recentSearches,
-                showSearch = selectedTab == HomeTab.Map,
-            )
-        },
-        bottomBar = {
-            HomeBottomBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
             )
         },
     ) { padding ->
@@ -153,80 +139,68 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                     .fillMaxSize()
                     .padding(padding),
         ) {
-            when (selectedTab) {
-                HomeTab.Map -> {
-                    when (val state = uiState) {
-                        NearbyStopsUiState.Locating -> {
-                            MessageContent(
-                                message = "Buscando paradas cerca de vos...",
-                                showProgress = true,
-                            )
-                        }
-
-                        NearbyStopsUiState.PermissionDenied -> {
-                            MessageContent(
-                                title = "Permiso de ubicación rechazado",
-                                message = "Usamos tu ubicación para mostrarte las paradas más cercanas.",
-                                primaryLabel = "Permitir ubicación",
-                                onPrimary = { attempt++ },
-                                secondaryLabel = "Explorar el mapa manualmente",
-                                onSecondary = {
-                                    viewModel.loadStopsForLocation(DEFAULT_MANUAL_LOCATION, false)
-                                },
-                            )
-                        }
-
-                        NearbyStopsUiState.LocationDisabled -> {
-                            MessageContent(
-                                title = "Ubicación desactivada",
-                                message = "Activá la ubicación del dispositivo para ver paradas cercanas.",
-                                primaryLabel = "Abrir ajustes",
-                                onPrimary = {
-                                    context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-                                },
-                                secondaryLabel = "Reintentar",
-                                onSecondary = { attempt++ },
-                            )
-                        }
-
-                        NearbyStopsUiState.LocationUnavailable -> {
-                            MessageContent(
-                                message = "No pudimos obtener tu ubicación. Intentá de nuevo.",
-                                primaryLabel = "Reintentar",
-                                onPrimary = { attempt++ },
-                            )
-                        }
-
-                        is NearbyStopsUiState.Error -> {
-                            MessageContent(
-                                title = "Error de conexión",
-                                message = state.message,
-                                primaryLabel = "Reintentar",
-                                onPrimary = { attempt++ },
-                            )
-                        }
-
-                        is NearbyStopsUiState.Ready -> {
-                            NearbyStopsContent(
-                                state = state,
-                                query = submittedQuery,
-                                selectedStopId = selectedStopId,
-                                focusTrigger = focusTrigger,
-                                onStopClick = { stop ->
-                                    selectedStopId = stop.id
-                                    focusTrigger++
-                                },
-                            )
-                        }
-                    }
+            when (val state = uiState) {
+                NearbyStopsUiState.Locating -> {
+                    MessageContent(
+                        message = "Buscando paradas cerca de vos...",
+                        showProgress = true,
+                    )
                 }
 
-                HomeTab.Notices -> {
-                    EmptyTab(message = "No hay avisos cerca de vos.")
+                NearbyStopsUiState.PermissionDenied -> {
+                    MessageContent(
+                        title = "Permiso de ubicación rechazado",
+                        message = "Usamos tu ubicación para mostrarte las paradas más cercanas.",
+                        primaryLabel = "Permitir ubicación",
+                        onPrimary = { attempt++ },
+                        secondaryLabel = "Explorar el mapa manualmente",
+                        onSecondary = {
+                            viewModel.loadStopsForLocation(DEFAULT_MANUAL_LOCATION, false)
+                        },
+                    )
                 }
 
-                HomeTab.Favorites -> {
-                    EmptyTab(message = "Todavía no agregaste paradas favoritas.")
+                NearbyStopsUiState.LocationDisabled -> {
+                    MessageContent(
+                        title = "Ubicación desactivada",
+                        message = "Activá la ubicación del dispositivo para ver paradas cercanas.",
+                        primaryLabel = "Abrir ajustes",
+                        onPrimary = {
+                            context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                        },
+                        secondaryLabel = "Reintentar",
+                        onSecondary = { attempt++ },
+                    )
+                }
+
+                NearbyStopsUiState.LocationUnavailable -> {
+                    MessageContent(
+                        message = "No pudimos obtener tu ubicación. Intentá de nuevo.",
+                        primaryLabel = "Reintentar",
+                        onPrimary = { attempt++ },
+                    )
+                }
+
+                is NearbyStopsUiState.Error -> {
+                    MessageContent(
+                        title = "Error de conexión",
+                        message = state.message,
+                        primaryLabel = "Reintentar",
+                        onPrimary = { attempt++ },
+                    )
+                }
+
+                is NearbyStopsUiState.Ready -> {
+                    NearbyStopsContent(
+                        state = state,
+                        query = submittedQuery,
+                        selectedStopId = selectedStopId,
+                        focusTrigger = focusTrigger,
+                        onStopClick = { stop ->
+                            selectedStopId = stop.id
+                            focusTrigger++
+                        },
+                    )
                 }
             }
         }
@@ -239,7 +213,6 @@ private fun HomeHeader(
     onQueryChange: (String) -> Unit,
     onSearchSubmitted: (String) -> Unit,
     recentSearches: List<SearchHistory>,
-    showSearch: Boolean,
 ) {
     Surface(tonalElevation = 2.dp) {
         Column(
@@ -254,70 +227,42 @@ private fun HomeHeader(
                 text = "Voy en Bondi",
                 style = MaterialTheme.typography.headlineSmall,
             )
-            if (showSearch) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(text = "Buscar parada o línea…") },
-                    leadingIcon = {
-                        IconButton(onClick = { onSearchSubmitted(query) }) {
-                            Icon(imageVector = Icons.Filled.Search, contentDescription = "Buscar")
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(text = "Buscar parada o línea…") },
+                leadingIcon = {
+                    IconButton(onClick = { onSearchSubmitted(query) }) {
+                        Icon(imageVector = Icons.Filled.Search, contentDescription = "Buscar")
+                    }
+                },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(imageVector = Icons.Filled.Close, contentDescription = "Limpiar búsqueda")
                         }
+                    }
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions =
+                    KeyboardActions(
+                        onSearch = { onSearchSubmitted(query) },
+                    ),
+            )
+            if (query.isBlank() && recentSearches.isNotEmpty()) {
+                SearchHistoryChips(
+                    searches = recentSearches,
+                    onSearchClick = {
+                        onQueryChange(it)
+                        onSearchSubmitted(it)
                     },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { onQueryChange("") }) {
-                                Icon(imageVector = Icons.Filled.Close, contentDescription = "Limpiar búsqueda")
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.medium,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions =
-                        KeyboardActions(
-                            onSearch = { onSearchSubmitted(query) },
-                        ),
                 )
-                if (query.isBlank() && recentSearches.isNotEmpty()) {
-                    SearchHistoryChips(
-                        searches = recentSearches,
-                        onSearchClick = {
-                            onQueryChange(it)
-                            onSearchSubmitted(it)
-                        },
-                    )
-                }
             }
         }
     }
-}
-
-@Composable
-private fun HomeBottomBar(
-    selectedTab: HomeTab,
-    onTabSelected: (HomeTab) -> Unit,
-) {
-    NavigationBar {
-        HomeTab.entries.forEach { tab ->
-            NavigationBarItem(
-                selected = selectedTab == tab,
-                onClick = { onTabSelected(tab) },
-                icon = { Icon(imageVector = tab.icon, contentDescription = null) },
-                label = { Text(text = tab.label) },
-            )
-        }
-    }
-}
-
-private enum class HomeTab(
-    val label: String,
-    val icon: ImageVector,
-) {
-    Map(label = "Mapa", icon = Icons.Filled.Place),
-    Notices(label = "Avisos", icon = Icons.Filled.Notifications),
-    Favorites(label = "Favoritas", icon = Icons.Filled.Favorite),
 }
 
 @Composable
@@ -429,23 +374,6 @@ private fun NearbyStopsContent(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyTab(message: String) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-        )
     }
 }
 
