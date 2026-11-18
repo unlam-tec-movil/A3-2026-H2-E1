@@ -1,54 +1,150 @@
+
 package ar.edu.unlam.scaffoldingandroid3.ui.navigation
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import ar.edu.unlam.scaffoldingandroid3.ui.components.BottomTab
+import ar.edu.unlam.scaffoldingandroid3.ui.components.VoyEnBondiBottomBar
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.CompassScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.FavoriteBusStopsScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.HomeScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.NearbyStopsScreen
+import ar.edu.unlam.scaffoldingandroid3.ui.screens.RoutesScreen
+import kotlinx.serialization.Serializable
+
+@Serializable
+data object MapDestination
+
+@Serializable
+data object RoutesDestination
 
 @Composable
 fun NavigationWrapper() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = NearbyStops) {
-        /* Se crea un composable<> por cada Screen que se quiere navegar
-         * Entre <> creamos un serializable (Ctrl click en "Home" para navegar hacia el archivo)
-         * En la Screen Composable creamos una lambda para darle acá su comportamiento
-         * de navegación (Ctrl Click en "NavigateToHome" para ver el ejemplo)
-         * Importante que: Por cada Screen Composable crearle su propio Scaffold y pasarle y pasarle el padding a la Column contenedora
-         * Modifier.padding(it)*/
+    val backStackEntry =
+        navController.currentBackStackEntryAsState().value
 
-        composable<NearbyStops> {
-            NearbyStopsScreen(
-                onNavigateToCompass = { stop ->
-                    navController.navigate(
-                        Compass(
-                            stopName = stop.name,
-                            latitude = stop.locationData.latitude.value,
-                            longitude = stop.locationData.longitude.value,
-                        ),
-                    )
+    val selectedTab =
+        when (
+            backStackEntry?.destination?.route
+        ) {
+            MapDestination::class.qualifiedName,
+            Compass::class.qualifiedName,
+            -> BottomTab.MAP
+            RoutesDestination::class.qualifiedName -> BottomTab.ROUTES
+            FavoriteBusStops::class.qualifiedName -> BottomTab.FAVORITES
+            else -> BottomTab.HOME
+        }
+
+    // Desde cualquier pestaña secundaria, Atrás vuelve a Inicio.
+    BackHandler(enabled = selectedTab != BottomTab.HOME) {
+        navController.popBackStack(Home, inclusive = false)
+    }
+
+    Scaffold(
+        bottomBar = {
+            VoyEnBondiBottomBar(
+                selectedTab = selectedTab,
+                onTabSelected = { tab ->
+                    if (tab != selectedTab) {
+                        when (tab) {
+                            BottomTab.HOME -> {
+                                navController.popBackStack(
+                                    Home,
+                                    inclusive = false,
+                                )
+                            }
+
+                            BottomTab.MAP -> {
+                                navController.navigate(MapDestination) {
+                                    popUpTo(Home) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
+                            }
+
+                            BottomTab.ROUTES -> {
+                                navController.navigate(RoutesDestination) {
+                                    popUpTo(Home) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
+                            }
+
+                            BottomTab.FAVORITES -> {
+                                navController.navigate(FavoriteBusStops) {
+                                    popUpTo(Home) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    }
                 },
             )
-        }
+        },
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = Home,
+            modifier = Modifier.padding(paddingValues),
+        ) {
+            composable<Home> {
+                HomeScreen(
+                    navigateToFavoriteBusStop = {
+                        navController.navigate(FavoriteBusStops) {
+                            popUpTo(Home) {
+                                inclusive = false
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
 
-        composable<Compass> {
-            CompassScreen(onBack = { navController.popBackStack() })
-        }
+            composable<MapDestination> {
+                NearbyStopsScreen(
+                    onNavigateToCompass = { stop ->
+                        navController.navigate(
+                            Compass(
+                                stopName = stop.name,
+                                latitude = stop.locationData.latitude.value,
+                                longitude = stop.locationData.longitude.value,
+                            ),
+                        )
+                    },
+                )
+            }
 
-        composable<Home> {
-            /*Siempre va a tener la misma estructura:
-             * El nombre de mi Screen Composable
-             * Dentro el nombre de la lambda que contiene el comportamiento de navegación
-             * "De la HomeScreen quiero navegar hacia "FavoriteBusStopsScreen"*/
-            HomeScreen(navigateToFavoriteBusStop = { navController.navigate(FavoriteBusStops) })
-        }
+            composable<Compass> {
+                CompassScreen(onBack = { navController.popBackStack() })
+            }
 
-        composable<FavoriteBusStops> {
-            FavoriteBusStopsScreen(navigateToHome = { navController.navigate(Home) })
+            composable<RoutesDestination> {
+                RoutesScreen()
+            }
+
+            composable<FavoriteBusStops> {
+                FavoriteBusStopsScreen(
+                    navigateToHome = {
+                        navController.popBackStack(
+                            Home,
+                            inclusive = false,
+                        )
+                    },
+                )
+            }
         }
     }
 }
