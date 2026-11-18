@@ -24,10 +24,11 @@ Run from the repository root; use `./gradlew` instead of `./gradlew.bat` on Unix
 ## Testing Guidelines
 - Use JUnit 4 for JVM tests and AndroidX JUnit, Espresso, or Compose testing for device tests.
 - Name test classes `<Subject>Test` and methods descriptively, following `addition_isCorrect` where appropriate.
-- Test behavior and failure cases for changed logic. Run tests after every change and report execution blockers. CI publishes Kover coverage; its configured minimum is currently 0%.
+- Test behavior and failure cases for changed logic. Run tests after every change and report execution blockers. CI publishes Kover coverage and fails below 80% line coverage (`koverVerifyRelease`).
 
 ## Commit & Pull Request Guidelines
 - Recent history uses `feat: ...`; follow the same concise, type-prefixed style, using `fix:` or `docs:` as appropriate.
+- The default branch is `develop`: branch from it and target it in PRs, not `main`.
 - Keep commits focused. Describe the change and validation in PRs, link relevant issues, and attach screenshots for visible UI changes.
 - Run formatting, lint, and relevant tests before requesting review.
 
