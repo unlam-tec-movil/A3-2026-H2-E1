@@ -42,6 +42,7 @@ android {
     }
     testOptions {
         unitTests {
+            isIncludeAndroidResources = true
             isReturnDefaultValues = true
         }
     }
@@ -59,6 +60,24 @@ kotlin {
 
 kover {
     reports {
+        filters {
+            excludes {
+                classes(
+                    "*_Factory",
+                    "*_Factory$*",
+                    "*_Provide*Factory",
+                    "*_Provide*Factory$*",
+                    "*_HiltModules*",
+                    "*_GeneratedInjector",
+                    "*_MembersInjector",
+                    "*.Hilt_*",
+                    "hilt_aggregated_deps.*",
+                    "dagger.hilt.internal.*",
+                    "*.ComposableSingletons*",
+                    "*.BuildConfig",
+                )
+            }
+        }
         verify {
             rule {
                 minBound(80)
@@ -99,5 +118,9 @@ dependencies {
     implementation(libs.google.play.services.location)
     implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.turbine)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     implementation("androidx.compose.material:material-icons-extended")
 }
