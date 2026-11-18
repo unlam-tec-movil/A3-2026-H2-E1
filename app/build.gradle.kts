@@ -89,4 +89,5 @@ dependencies {
     implementation(libs.google.play.services.location)
     implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.turbine)
+    implementation("androidx.compose.material:material-icons-extended")
 }

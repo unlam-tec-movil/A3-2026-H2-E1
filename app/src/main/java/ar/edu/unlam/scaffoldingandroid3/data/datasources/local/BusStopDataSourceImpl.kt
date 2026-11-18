@@ -8,8 +8,9 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.StopStatus
+import javax.inject.Inject
 
-class BusStopDataSourceImpl : BusStopDataSource {
+class BusStopDataSourceImpl @Inject constructor() : BusStopDataSource {
     override suspend fun getBusStops(location: LocationData): List<BusStop> =
         listOf(
             BusStop(

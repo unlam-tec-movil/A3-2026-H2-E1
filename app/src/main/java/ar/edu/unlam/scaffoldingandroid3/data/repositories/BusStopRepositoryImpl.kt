@@ -5,7 +5,6 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.BusStopRepository
 import javax.inject.Inject
-
 class BusStopRepositoryImpl
     @Inject
     constructor(
