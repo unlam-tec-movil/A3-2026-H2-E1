@@ -8,8 +8,11 @@ import ar.edu.unlam.scaffoldingandroid3.domain.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
 import ar.edu.unlam.scaffoldingandroid3.domain.SearchHistory
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,6 +45,11 @@ class NearbyStopsViewModel
         private val busStopRepository: BusStopRepository,
         val locationRepo: LocationRepo,
     ) : ViewModel() {
+        private val _uiState = MutableStateFlow<NearbyStopsUiState>(NearbyStopsUiState.Locating)
+        val uiState: StateFlow<NearbyStopsUiState> = _uiState.asStateFlow()
+
+        private var locationJob: Job? = null
+
         val recentSearches: StateFlow<List<SearchHistory>> =
             busStopRepository
                 .getRecentSearches()
@@ -51,28 +59,68 @@ class NearbyStopsViewModel
                     initialValue = emptyList(),
                 )
 
+        fun onPermissionDenied() {
+            _uiState.value = NearbyStopsUiState.PermissionDenied
+        }
+
+        fun onLocationDisabled() {
+            _uiState.value = NearbyStopsUiState.LocationDisabled
+        }
+
+        fun onLocationUnavailable() {
+            _uiState.value = NearbyStopsUiState.LocationUnavailable
+        }
+
+        fun setLocating() {
+            _uiState.value = NearbyStopsUiState.Locating
+        }
+
+        fun startLocationTracking(isApproximate: Boolean) {
+            locationJob?.cancel()
+            locationJob =
+                viewModelScope.launch {
+                    locationRepo.locationUpdates().collect { newCenter ->
+                        try {
+                            val stops = busStopRepository.getNearbyStops(newCenter, 1000.0)
+                            _uiState.value =
+                                NearbyStopsUiState.Ready(
+                                    center = newCenter,
+                                    stops = stops,
+                                    isApproximate = isApproximate,
+                                    isFromCache = false,
+                                )
+                        } catch (e: Exception) {
+                            val currentState = _uiState.value
+                            if (currentState !is NearbyStopsUiState.Ready) {
+                                _uiState.value =
+                                    NearbyStopsUiState.Error(
+                                        message = e.message ?: "No pudimos conectar con el servidor de paradas.",
+                                    )
+                            }
+                        }
+                    }
+                }
+        }
+
         fun loadStopsForLocation(
             center: GeoPoint,
             isApproximate: Boolean,
-            onStateUpdated: (NearbyStopsUiState) -> Unit,
         ) {
             viewModelScope.launch {
                 try {
                     val stops = busStopRepository.getNearbyStops(center, 1000.0)
-                    onStateUpdated(
+                    _uiState.value =
                         NearbyStopsUiState.Ready(
                             center = center,
                             stops = stops,
                             isApproximate = isApproximate,
                             isFromCache = false,
-                        ),
-                    )
+                        )
                 } catch (e: Exception) {
-                    onStateUpdated(
+                    _uiState.value =
                         NearbyStopsUiState.Error(
                             message = e.message ?: "No pudimos conectar con el servidor de paradas.",
-                        ),
-                    )
+                        )
                 }
             }
         }

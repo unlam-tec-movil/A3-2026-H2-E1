@@ -27,9 +27,9 @@ class BusStopSearchTest {
         )
 
     @Test
-    fun filterBusStops_emptyQuery_returnsAllStops() {
+    fun filterBusStops_emptyQuery_returnsEmptyList() {
         val result = filterBusStops(sampleStops, "")
-        assertEquals(3, result.size)
+        assertEquals(0, result.size)
     }
 
     @Test

@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
@@ -25,6 +29,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -44,9 +49,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,7 +62,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
 import ar.edu.unlam.scaffoldingandroid3.domain.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.filterBusStops
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
-import ar.edu.unlam.scaffoldingandroid3.ui.components.GoogleMapView
+import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -67,11 +74,13 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val locationRepo = viewModel.locationRepo
     val recentSearches by viewModel.recentSearches.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    var uiState by remember { mutableStateOf<NearbyStopsUiState>(NearbyStopsUiState.Locating) }
     var selectedStopId by remember { mutableStateOf<String?>(null) }
+    var focusTrigger by remember { mutableIntStateOf(0) }
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.Map) }
     var query by rememberSaveable { mutableStateOf("") }
+    var submittedQuery by rememberSaveable { mutableStateOf("") }
     var attempt by remember { mutableIntStateOf(0) }
     var isApproximateLocation by remember { mutableStateOf(false) }
 
@@ -86,7 +95,7 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                 isApproximateLocation = !fineGranted && coarseGranted
                 attempt++
             } else {
-                uiState = NearbyStopsUiState.PermissionDenied
+                viewModel.onPermissionDenied()
             }
         }
 
@@ -101,17 +110,15 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
             return@LaunchedEffect
         }
         if (!locationRepo.isLocationEnabled()) {
-            uiState = NearbyStopsUiState.LocationDisabled
+            viewModel.onLocationDisabled()
             return@LaunchedEffect
         }
-        uiState = NearbyStopsUiState.Locating
+        viewModel.setLocating()
+        viewModel.startLocationTracking(isApproximateLocation)
+
         val center = withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) { locationRepo.currentLocation() }
-        if (center == null) {
-            uiState = NearbyStopsUiState.LocationUnavailable
-        } else {
-            viewModel.loadStopsForLocation(center, isApproximateLocation) { state ->
-                uiState = state
-            }
+        if (center == null && viewModel.uiState.value is NearbyStopsUiState.Locating) {
+            viewModel.onLocationUnavailable()
         }
     }
 
@@ -119,8 +126,16 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
         topBar = {
             HomeHeader(
                 query = query,
-                onQueryChange = { query = it },
-                onSearchSubmitted = { viewModel.onSearchSubmitted(it) },
+                onQueryChange = {
+                    query = it
+                    if (it.isBlank()) {
+                        submittedQuery = ""
+                    }
+                },
+                onSearchSubmitted = {
+                    submittedQuery = it
+                    viewModel.onSearchSubmitted(it)
+                },
                 recentSearches = recentSearches,
                 showSearch = selectedTab == HomeTab.Map,
             )
@@ -139,15 +154,16 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                     .padding(padding),
         ) {
             when (selectedTab) {
-                HomeTab.Map ->
+                HomeTab.Map -> {
                     when (val state = uiState) {
-                        NearbyStopsUiState.Locating ->
+                        NearbyStopsUiState.Locating -> {
                             MessageContent(
                                 message = "Buscando paradas cerca de vos...",
                                 showProgress = true,
                             )
+                        }
 
-                        NearbyStopsUiState.PermissionDenied ->
+                        NearbyStopsUiState.PermissionDenied -> {
                             MessageContent(
                                 title = "Permiso de ubicación rechazado",
                                 message = "Usamos tu ubicación para mostrarte las paradas más cercanas.",
@@ -155,13 +171,12 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                                 onPrimary = { attempt++ },
                                 secondaryLabel = "Explorar el mapa manualmente",
                                 onSecondary = {
-                                    viewModel.loadStopsForLocation(DEFAULT_MANUAL_LOCATION, false) { newState ->
-                                        uiState = newState
-                                    }
+                                    viewModel.loadStopsForLocation(DEFAULT_MANUAL_LOCATION, false)
                                 },
                             )
+                        }
 
-                        NearbyStopsUiState.LocationDisabled ->
+                        NearbyStopsUiState.LocationDisabled -> {
                             MessageContent(
                                 title = "Ubicación desactivada",
                                 message = "Activá la ubicación del dispositivo para ver paradas cercanas.",
@@ -172,34 +187,47 @@ fun NearbyStopsScreen(viewModel: NearbyStopsViewModel = hiltViewModel()) {
                                 secondaryLabel = "Reintentar",
                                 onSecondary = { attempt++ },
                             )
+                        }
 
-                        NearbyStopsUiState.LocationUnavailable ->
+                        NearbyStopsUiState.LocationUnavailable -> {
                             MessageContent(
                                 message = "No pudimos obtener tu ubicación. Intentá de nuevo.",
                                 primaryLabel = "Reintentar",
                                 onPrimary = { attempt++ },
                             )
+                        }
 
-                        is NearbyStopsUiState.Error ->
+                        is NearbyStopsUiState.Error -> {
                             MessageContent(
                                 title = "Error de conexión",
                                 message = state.message,
                                 primaryLabel = "Reintentar",
                                 onPrimary = { attempt++ },
                             )
+                        }
 
-                        is NearbyStopsUiState.Ready ->
+                        is NearbyStopsUiState.Ready -> {
                             NearbyStopsContent(
                                 state = state,
-                                query = query,
+                                query = submittedQuery,
                                 selectedStopId = selectedStopId,
-                                onStopClick = { stop -> selectedStopId = stop.id },
+                                focusTrigger = focusTrigger,
+                                onStopClick = { stop ->
+                                    selectedStopId = stop.id
+                                    focusTrigger++
+                                },
                             )
+                        }
                     }
+                }
 
-                HomeTab.Notices -> EmptyTab(message = "No hay avisos cerca de vos.")
+                HomeTab.Notices -> {
+                    EmptyTab(message = "No hay avisos cerca de vos.")
+                }
 
-                HomeTab.Favorites -> EmptyTab(message = "Todavía no agregaste paradas favoritas.")
+                HomeTab.Favorites -> {
+                    EmptyTab(message = "Todavía no agregaste paradas favoritas.")
+                }
             }
         }
     }
@@ -229,17 +257,28 @@ private fun HomeHeader(
             if (showSearch) {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = {
-                        onQueryChange(it)
-                        onSearchSubmitted(it)
-                    },
+                    onValueChange = onQueryChange,
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text(text = "Buscar parada o línea…") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Filled.Search, contentDescription = null)
+                        IconButton(onClick = { onSearchSubmitted(query) }) {
+                            Icon(imageVector = Icons.Filled.Search, contentDescription = "Buscar")
+                        }
+                    },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { onQueryChange("") }) {
+                                Icon(imageVector = Icons.Filled.Close, contentDescription = "Limpiar búsqueda")
+                            }
+                        }
                     },
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions =
+                        KeyboardActions(
+                            onSearch = { onSearchSubmitted(query) },
+                        ),
                 )
                 if (query.isBlank() && recentSearches.isNotEmpty()) {
                     SearchHistoryChips(
@@ -286,10 +325,20 @@ private fun NearbyStopsContent(
     state: NearbyStopsUiState.Ready,
     query: String,
     selectedStopId: String?,
+    focusTrigger: Int,
     onStopClick: (BusStop) -> Unit,
 ) {
-    val selected = state.stops.firstOrNull { it.id == selectedStopId }
     val stops = remember(state.stops, query) { filterBusStops(state.stops, query) }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedStopId) {
+        if (selectedStopId != null) {
+            val index = stops.indexOfFirst { it.id == selectedStopId }
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (state.isApproximate) {
@@ -322,36 +371,21 @@ private fun NearbyStopsContent(
             }
         }
 
-        Box(modifier = Modifier.fillMaxWidth()) {
-            GoogleMapView(
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .clipToBounds(),
+        ) {
+            OsmMapView(
                 userLocation = state.center,
-                stops = state.stops,
+                stops = stops,
                 selectedStopId = selectedStopId,
+                focusTrigger = focusTrigger,
                 onStopClick = onStopClick,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(260.dp),
+                modifier = Modifier.fillMaxSize(),
             )
-            if (selected != null) {
-                Surface(
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(12.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    tonalElevation = 3.dp,
-                ) {
-                    Text(
-                        text =
-                            selected.lines.joinToString(" · ") {
-                                "${it.code} → ${it.destination}"
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    )
-                }
-            }
         }
 
         Text(
@@ -361,22 +395,25 @@ private fun NearbyStopsContent(
         )
 
         when {
-            state.stops.isEmpty() ->
+            query.isBlank() -> {
                 Text(
-                    text = "No hay paradas cerca de tu ubicación.",
+                    text = "Ingresá una línea o parada en el buscador para ver los colectivos.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
+            }
 
-            stops.isEmpty() ->
+            stops.isEmpty() -> {
                 Text(
                     text = "No encontramos paradas con esa búsqueda.",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
+            }
 
-            else ->
+            else -> {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -390,6 +427,7 @@ private fun NearbyStopsContent(
                         )
                     }
                 }
+            }
         }
     }
 }

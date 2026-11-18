@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kover)
 
     alias(libs.plugins.jetbrainsKotlinSerialization)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -40,13 +41,6 @@ android {
     buildFeatures {
         compose = true
     }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "/META-INF/native-image/native-image.properties"
-            excludes += "/META-INF/native-image/**"
-        }
-    }
 }
 
 kotlin {
@@ -64,7 +58,12 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.geofire.android.common)
+    implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -83,12 +82,9 @@ dependencies {
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
-    // mongo
-    implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.6.0")
 
-    // Google Maps
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.maps)
+    // osmdroid
+    implementation(libs.osmdroid.android)
 
     // Room
     implementation(libs.androidx.room.runtime)
