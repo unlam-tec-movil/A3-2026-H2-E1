@@ -34,21 +34,24 @@ fun FavoriteBusStopsScreen(
     val favoriteStopIds by viewModel.favoriteStopIds.collectAsState()
 
     // Mismos datos temporales que utiliza Home.
-    val busStops = listOf(
-        1L to "Av. San Martín y Arieta",
-        2L to "Florencio Varela y Villegas",
-    )
+    val busStops =
+        listOf(
+            1L to "Av. San Martín y Arieta",
+            2L to "Florencio Varela y Villegas",
+        )
 
-    val favoriteStops = busStops.filter { (stopId, _) ->
-        stopId in favoriteStopIds
-    }
+    val favoriteStops =
+        busStops.filter { (stopId, _) ->
+            stopId in favoriteStopIds
+        }
 
     Scaffold { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
         ) {
             Text(
                 text = "Mis paradas favoritas",
@@ -63,7 +66,8 @@ fun FavoriteBusStopsScreen(
                 )
 
                 Text(
-                    text = "Explorá las paradas cercanas y tocá " +
+                    text =
+                        "Explorá las paradas cercanas y tocá " +
                             "el corazón para guardarlas.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -76,9 +80,10 @@ fun FavoriteBusStopsScreen(
                         key = { (stopId, _) -> stopId },
                     ) { (stopId, stopName) ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

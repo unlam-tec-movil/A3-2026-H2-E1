@@ -44,11 +44,12 @@ fun VoyEnBondiBottomBar(
                 onClick = { onTabSelected(tab) },
                 icon = {
                     Icon(
-                        imageVector = if (selectedTab == tab) {
-                            tab.selectedIcon
-                        } else {
-                            tab.unselectedIcon
-                        },
+                        imageVector =
+                            if (selectedTab == tab) {
+                                tab.selectedIcon
+                            } else {
+                                tab.unselectedIcon
+                            },
                         contentDescription = tab.label,
                     )
                 },

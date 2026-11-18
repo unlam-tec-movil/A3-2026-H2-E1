@@ -18,7 +18,5 @@ object FavoriteBusStopModule {
     @Singleton
     fun provideFavoriteBusStopRepository(
         @ApplicationContext context: Context,
-    ): FavoriteBusStopRepository {
-        return FavoriteBusStopRepositoryImpl(context)
-    }
+    ): FavoriteBusStopRepository = FavoriteBusStopRepositoryImpl(context)
 }

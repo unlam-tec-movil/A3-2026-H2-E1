@@ -35,17 +35,19 @@ fun HomeScreen(
     val favoriteStopIds by viewModel.favoriteStopIds.collectAsState()
 
     // Datos temporales hasta integrar las paradas reales.
-    val busStops = listOf(
-        1L to "Av. San Martín y Arieta",
-        2L to "Florencio Varela y Villegas",
-    )
+    val busStops =
+        listOf(
+            1L to "Av. San Martín y Arieta",
+            2L to "Florencio Varela y Villegas",
+        )
 
     Scaffold { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
         ) {
             Text(
                 text = "Paradas cercanas",
@@ -60,9 +62,10 @@ fun HomeScreen(
                     val isFavorite = stopId in favoriteStopIds
 
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -77,21 +80,24 @@ fun HomeScreen(
                             },
                         ) {
                             Icon(
-                                imageVector = if (isFavorite) {
-                                    Icons.Filled.Favorite
-                                } else {
-                                    Icons.Outlined.FavoriteBorder
-                                },
-                                contentDescription = if (isFavorite) {
-                                    "Quitar de favoritos"
-                                } else {
-                                    "Agregar a favoritos"
-                                },
-                                tint = if (isFavorite) {
-                                    FavoriteRed
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
+                                imageVector =
+                                    if (isFavorite) {
+                                        Icons.Filled.Favorite
+                                    } else {
+                                        Icons.Outlined.FavoriteBorder
+                                    },
+                                contentDescription =
+                                    if (isFavorite) {
+                                        "Quitar de favoritos"
+                                    } else {
+                                        "Agregar a favoritos"
+                                    },
+                                tint =
+                                    if (isFavorite) {
+                                        FavoriteRed
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
                             )
                         }
                     }

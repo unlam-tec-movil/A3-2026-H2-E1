@@ -14,16 +14,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 interface BusRepositoryModule {
+    @Binds
+    @Singleton
+    fun bindStopDataSource(impl: BusStopDataSourceImpl): BusStopDataSource
 
     @Binds
     @Singleton
-    fun bindStopDataSource(
-        impl: BusStopDataSourceImpl,
-    ): BusStopDataSource
-
-    @Binds
-    @Singleton
-    fun bindBusStopRepository(
-        impl: BusStopRepositoryImpl,
-    ): BusStopRepository
+    fun bindBusStopRepository(impl: BusStopRepositoryImpl): BusStopRepository
 }

@@ -18,9 +18,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RoutesScreen() {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -37,7 +38,8 @@ fun RoutesScreen() {
         )
 
         Text(
-            text = "Acá vas a poder buscar un destino " +
+            text =
+                "Acá vas a poder buscar un destino " +
                     "y consultar recorridos y combinaciones.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 8.dp),

@@ -7,9 +7,10 @@ import androidx.annotation.RequiresPermission
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import com.google.android.gms.location.FusedLocationProviderClient
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
-import dagger.hilt.android.qualifiers.ApplicationContext
+
 /**
  * Implementación de [LocationDataSource] que utiliza el Fused Location Provider de Google
  * para obtener la última ubicación conocida del dispositivo.
@@ -32,7 +33,7 @@ class LocationDataSourceImpl
     constructor(
         private val locationProvider: FusedLocationProviderClient,
         private val mapper: LocationMapper,
-        @ApplicationContext private val context: Context
+        @ApplicationContext private val context: Context,
     ) : LocationDataSource {
         /**
          * Obtiene la última ubicación conocida del dispositivo.

@@ -31,14 +31,15 @@ fun NavigationWrapper() {
     val backStackEntry =
         navController.currentBackStackEntryAsState().value
 
-    val selectedTab = when (
-        backStackEntry?.destination?.route
-    ) {
-        MapDestination::class.qualifiedName -> BottomTab.MAP
-        RoutesDestination::class.qualifiedName -> BottomTab.ROUTES
-        FavoriteBusStops::class.qualifiedName -> BottomTab.FAVORITES
-        else -> BottomTab.HOME
-    }
+    val selectedTab =
+        when (
+            backStackEntry?.destination?.route
+        ) {
+            MapDestination::class.qualifiedName -> BottomTab.MAP
+            RoutesDestination::class.qualifiedName -> BottomTab.ROUTES
+            FavoriteBusStops::class.qualifiedName -> BottomTab.FAVORITES
+            else -> BottomTab.HOME
+        }
 
     // Desde cualquier pestaña secundaria, Atrás vuelve a Inicio.
     BackHandler(enabled = selectedTab != BottomTab.HOME) {

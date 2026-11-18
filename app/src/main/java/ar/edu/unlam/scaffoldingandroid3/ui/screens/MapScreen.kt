@@ -18,9 +18,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun MapScreen() {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -37,7 +38,8 @@ fun MapScreen() {
         )
 
         Text(
-            text = "Próximamente vas a poder explorar " +
+            text =
+                "Próximamente vas a poder explorar " +
                     "las paradas de colectivo en el mapa.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 8.dp),

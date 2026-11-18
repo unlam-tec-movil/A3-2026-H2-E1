@@ -9,11 +9,11 @@ import kotlinx.coroutines.flow.asStateFlow
 class FavoriteBusStopRepositoryImpl(
     context: Context,
 ) : FavoriteBusStopRepository {
-
-    private val preferences = context.getSharedPreferences(
-        "voy_en_bondi_favorites",
-        Context.MODE_PRIVATE,
-    )
+    private val preferences =
+        context.getSharedPreferences(
+            "voy_en_bondi_favorites",
+            Context.MODE_PRIVATE,
+        )
 
     private val favorites = MutableStateFlow(loadFavorites())
 
@@ -27,17 +27,16 @@ class FavoriteBusStopRepositoryImpl(
         saveFavorites(favorites.value - stopId)
     }
 
-    override suspend fun isFavorite(stopId: Long): Boolean {
-        return stopId in favorites.value
-    }
+    override suspend fun isFavorite(stopId: Long): Boolean = stopId in favorites.value
 
     private fun saveFavorites(updatedFavorites: Set<Long>) {
-        val saved = preferences.edit()
-            .putStringSet(
-                FAVORITES_KEY,
-                updatedFavorites.map { it.toString() }.toSet(),
-            )
-            .commit()
+        val saved =
+            preferences
+                .edit()
+                .putStringSet(
+                    FAVORITES_KEY,
+                    updatedFavorites.map { it.toString() }.toSet(),
+                ).commit()
 
         if (saved) {
             favorites.value = updatedFavorites
@@ -48,14 +47,14 @@ class FavoriteBusStopRepositoryImpl(
         }
     }
 
-    private fun loadFavorites(): Set<Long> {
-        return preferences.getStringSet(
-            FAVORITES_KEY,
-            emptySet(),
-        ).orEmpty()
+    private fun loadFavorites(): Set<Long> =
+        preferences
+            .getStringSet(
+                FAVORITES_KEY,
+                emptySet(),
+            ).orEmpty()
             .mapNotNull { it.toLongOrNull() }
             .toSet()
-    }
 
     companion object {
         private const val FAVORITES_KEY = "favorite_stop_ids"
