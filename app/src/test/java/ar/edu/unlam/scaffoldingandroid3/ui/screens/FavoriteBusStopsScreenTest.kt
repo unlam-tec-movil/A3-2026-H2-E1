@@ -1,3 +1,4 @@
+
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -5,12 +6,14 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.VoyEnBondiTheme
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,52 +25,96 @@ class FavoriteBusStopsScreenTest {
     val composeTestRule = createComposeRule()
 
     private val favoriteIds = MutableStateFlow(emptySet<Long>())
+
+    private val favoriteStops =
+        MutableStateFlow(emptyList<FavoriteStopSnapshot>())
+
     private val viewModel =
         mockk<FavoriteBusStopsViewModel>(relaxed = true) {
             every { favoriteStopIds } returns favoriteIds
+            every { favoriteStops } returns this@FavoriteBusStopsScreenTest.favoriteStops
         }
+
+    private val testStop =
+        FavoriteStopSnapshot(
+            stopId = 2L,
+            name = "Florencio Varela y Villegas",
+            latitude = -34.65,
+            longitude = -58.62,
+            lines = "Línea 96",
+        )
+
+    private var selectedStop: FavoriteStopSnapshot? = null
 
     private fun showScreen() {
         composeTestRule.setContent {
             VoyEnBondiTheme {
-                FavoriteBusStopsScreen(navigateToHome = {}, viewModel = viewModel)
+                FavoriteBusStopsScreen(
+                    onStopSelected = { stop ->
+                        selectedStop = stop
+                    },
+                    viewModel = viewModel,
+                )
             }
         }
     }
 
     @Test
     fun `given no favorites, when it is shown, then displays the empty state`() {
-        // Given / When
         showScreen()
 
-        // Then
-        composeTestRule.onNodeWithText("Mis paradas favoritas").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Todavía no tenés paradas favoritas.").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText("Mis paradas favoritas")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Todavía no agregaste paradas favoritas")
+            .assertIsDisplayed()
     }
 
     @Test
     fun `given a favorite stop, when it is shown, then lists only that stop`() {
-        // Given
-        favoriteIds.value = setOf(2L)
+        favoriteIds.value = setOf(testStop.stopId)
+        favoriteStops.value = listOf(testStop)
 
-        // When
         showScreen()
 
-        // Then
-        composeTestRule.onNodeWithText("Florencio Varela y Villegas").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Av. San Martín y Arieta").assertDoesNotExist()
+        composeTestRule
+            .onNodeWithText("Florencio Varela y Villegas")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Av. San Martín y Arieta")
+            .assertDoesNotExist()
     }
 
     @Test
     fun `given a favorite stop, when tapping its heart, then removes it from favorites`() {
-        // Given
-        favoriteIds.value = setOf(2L)
+        favoriteIds.value = setOf(testStop.stopId)
+        favoriteStops.value = listOf(testStop)
+
         showScreen()
 
-        // When
-        composeTestRule.onNodeWithContentDescription("Quitar de favoritos").performClick()
+        composeTestRule
+            .onNodeWithContentDescription("Quitar de favoritos")
+            .performClick()
 
-        // Then
-        verify(exactly = 1) { viewModel.removeFavorite(2L) }
+        verify(exactly = 1) {
+            viewModel.removeFavorite(testStop.stopId)
+        }
+    }
+
+    @Test
+    fun `given a favorite stop, when selecting it, then navigates to the map`() {
+        favoriteIds.value = setOf(testStop.stopId)
+        favoriteStops.value = listOf(testStop)
+
+        showScreen()
+
+        composeTestRule
+            .onNodeWithText("Florencio Varela y Villegas")
+            .performClick()
+
+        assertEquals(testStop, selectedStop)
     }
 }

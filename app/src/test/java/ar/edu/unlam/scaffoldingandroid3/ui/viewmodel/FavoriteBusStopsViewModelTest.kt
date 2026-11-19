@@ -104,7 +104,9 @@ class FavoriteBusStopsViewModelTest {
 
             // Then
             coVerify(exactly = 1) { repository.removeFavorite(STOP_ID) }
-            coVerify(exactly = 0) { repository.addFavorite(any()) }
+            coVerify(exactly = 0) {
+                repository.addFavorite(any<Long>())
+            }
         }
 
     private companion object {
