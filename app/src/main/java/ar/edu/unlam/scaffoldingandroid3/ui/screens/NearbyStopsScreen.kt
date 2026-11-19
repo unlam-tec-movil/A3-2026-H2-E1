@@ -65,10 +65,13 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
+import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
+import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
+import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.PhotoReportViewModel
 
 @Composable
 fun NearbyStopsScreen(
@@ -399,6 +402,9 @@ private fun NearbyStopsContent(
     onToggleFavorite: (Long) -> Unit,
     selectedFavorite: FavoriteStopSnapshot? = null,
 ) {
+    val photoReportViewModel: PhotoReportViewModel = hiltViewModel()
+    val photoReportState by photoReportViewModel.uiState.collectAsState()
+
     val selected =
         state.busStops.firstOrNull {
             it.stopId == state.selectedStopId
@@ -527,6 +533,13 @@ private fun NearbyStopsContent(
                         ) {
                             Text("Orientarme")
                         }
+
+                        PhotoReportCameraButton(
+                            stopId = selectedForMap.stopId,
+                            onPhotoTaken = photoReportViewModel::onPhotoTaken,
+                            onPermissionDenied = photoReportViewModel::onPermissionDenied,
+                            onCancelled = photoReportViewModel::onCancelled,
+                        )
                     }
                 }
             }
@@ -592,6 +605,13 @@ private fun NearbyStopsContent(
             }
         }
     }
+
+    PhotoReportDialogs(
+        state = photoReportState,
+        onConfirm = photoReportViewModel::saveReport,
+        onDismiss = photoReportViewModel::onCancelled,
+        onAcknowledge = photoReportViewModel::onAcknowledged,
+    )
 }
 
 @Composable
