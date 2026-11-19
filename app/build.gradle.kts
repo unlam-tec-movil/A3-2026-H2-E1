@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kover)
 
     alias(libs.plugins.jetbrainsKotlinSerialization)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -66,6 +67,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.geofire.android.common)
     testImplementation(libs.junit)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -90,4 +94,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.turbine)
     implementation("androidx.compose.material:material-icons-extended")
+
+    implementation(libs.osmdroid.android)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 }

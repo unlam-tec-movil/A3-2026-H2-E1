@@ -8,3 +8,6 @@ object Home
 
 @Serializable
 object FavoriteBusStops
+
+@Serializable
+object NearbyStops

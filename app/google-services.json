@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "548117707877",
+    "project_id": "voyenbondi-512c1",
+    "storage_bucket": "voyenbondi-512c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548117707877:android:1ac64e7c30fe73f7d65a8c",
+        "android_client_info": {
+          "package_name": "ar.edu.unlam.scaffoldingandroid3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByWxV45-MYH3oqy2_TzXAgGSDnoDgpNbU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

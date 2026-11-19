@@ -14,7 +14,7 @@ import ar.edu.unlam.scaffoldingandroid3.ui.components.BottomTab
 import ar.edu.unlam.scaffoldingandroid3.ui.components.VoyEnBondiBottomBar
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.FavoriteBusStopsScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.HomeScreen
-import ar.edu.unlam.scaffoldingandroid3.ui.screens.MapScreen
+import ar.edu.unlam.scaffoldingandroid3.ui.screens.NearbyStopsScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.RoutesScreen
 import kotlinx.serialization.Serializable
 
@@ -111,7 +111,7 @@ fun NavigationWrapper() {
             }
 
             composable<MapDestination> {
-                MapScreen()
+                NearbyStopsScreen()
             }
 
             composable<RoutesDestination> {

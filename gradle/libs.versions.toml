@@ -19,6 +19,11 @@ kover = "0.9.11"
 ktlint = "14.2.0"
 navigationCompose = "2.10.2"
 kotlinSerialization = "1.12.0"
+osmdroid = "6.1.18"
+room = "2.8.5"
+googleGmsGoogleServices = "4.5.0"
+firebaseBom = "35.1.0"
+geofire = "3.2.0"
 
 mockk = "1.14.11"
 coroutines = "1.11.0"
@@ -62,6 +67,15 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinSerialization" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
+osmdroid-android = { module = "org.osmdroid:osmdroid-android", version.ref = "osmdroid" }
+
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+geofire-android-common = { module = "com.firebase:geofire-android-common", version.ref = "geofire" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
@@ -72,3 +86,4 @@ kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 
 jetbrainsKotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
