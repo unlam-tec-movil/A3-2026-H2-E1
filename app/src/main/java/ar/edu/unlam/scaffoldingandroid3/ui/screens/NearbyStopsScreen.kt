@@ -1,4 +1,3 @@
-
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,16 +19,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -37,17 +42,20 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +77,7 @@ import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun NearbyStopsScreen(
@@ -137,20 +146,6 @@ fun NearbyStopsScreen(
     }
 
     Scaffold(
-        topBar = {
-            HomeHeader(
-                query = query,
-                onQueryChange = {
-                    query = it
-                    viewModel.onSearchQueryChange(it)
-                },
-                onSearchSubmitted = {
-                    viewModel.submitSearch(it)
-                },
-                recentSearches = recentSearches,
-                showSearch = selectedTab == HomeTab.Map,
-            )
-        },
         bottomBar = {
             HomeBottomBar(
                 selectedTab = selectedTab,
@@ -238,11 +233,19 @@ fun NearbyStopsScreen(
                         is MapUiState.Success -> {
                             NearbyStopsContent(
                                 state = state,
+                                query = query,
+                                onQueryChange = {
+                                    query = it
+                                    viewModel.onSearchQueryChange(it)
+                                },
+                                onSearchSubmitted = {
+                                    viewModel.submitSearch(it)
+                                },
+                                recentSearches = recentSearches,
                                 onStopClick = { stop ->
                                     selectedFavorite = null
                                     viewModel.selectBusStop(stop.stopId)
                                 },
-                                onOrientClick = onNavigateToCompass,
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
                                     val stop =
@@ -286,9 +289,11 @@ private fun HomeHeader(
     onQueryChange: (String) -> Unit,
     onSearchSubmitted: (String) -> Unit,
     recentSearches: List<SearchHistory>,
-    showSearch: Boolean,
 ) {
-    Surface(tonalElevation = 2.dp) {
+    Surface(
+        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+    ) {
         Column(
             modifier =
                 Modifier
@@ -296,51 +301,63 @@ private fun HomeHeader(
                     .statusBarsPadding()
                     .padding(
                         horizontal = 16.dp,
-                        vertical = 12.dp,
+                        vertical = 8.dp,
                     ),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = "Voy en Bondi",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
             )
 
-            if (showSearch) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = {
-                        Text("Buscar parada o línea…")
-                    },
-                    leadingIcon = {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text("Buscar parada o línea…")
+                },
+                leadingIcon = {
+                    IconButton(onClick = { onSearchSubmitted(query) }) {
                         Icon(
                             imageVector = Icons.Filled.Search,
-                            contentDescription = null,
+                            contentDescription = "Buscar",
                         )
-                    },
-                    singleLine = true,
-                    keyboardOptions =
-                        KeyboardOptions(
-                            imeAction = ImeAction.Search,
-                        ),
-                    keyboardActions =
-                        KeyboardActions(
-                            onSearch = {
-                                onSearchSubmitted(query)
-                            },
-                        ),
-                )
-
-                if (query.isBlank() && recentSearches.isNotEmpty()) {
-                    SearchHistoryChips(
-                        searches = recentSearches,
-                        onSearchClick = {
-                            onQueryChange(it)
-                            onSearchSubmitted(it)
+                    }
+                },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Limpiar búsqueda",
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions =
+                    KeyboardOptions(
+                        imeAction = ImeAction.Search,
+                    ),
+                keyboardActions =
+                    KeyboardActions(
+                        onSearch = {
+                            onSearchSubmitted(query)
                         },
-                    )
-                }
+                    ),
+            )
+
+            if (query.isBlank() && recentSearches.isNotEmpty()) {
+                SearchHistoryChips(
+                    searches = recentSearches,
+                    onSearchClick = {
+                        onQueryChange(it)
+                        onSearchSubmitted(it)
+                    },
+                )
             }
         }
     }
@@ -390,15 +407,23 @@ private enum class HomeTab(
     ),
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NearbyStopsContent(
     state: MapUiState.Success,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearchSubmitted: (String) -> Unit,
+    recentSearches: List<SearchHistory>,
     onStopClick: (BusStop) -> Unit,
-    onOrientClick: (BusStop) -> Unit,
     favoriteIds: Set<Long>,
     onToggleFavorite: (Long) -> Unit,
     selectedFavorite: FavoriteStopSnapshot? = null,
 ) {
+    val scaffoldState = rememberBottomSheetScaffoldState()
+    val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
     val selected =
         state.busStops.firstOrNull {
             it.stopId == state.selectedStopId
@@ -427,169 +452,156 @@ private fun NearbyStopsContent(
             state.busStops
         }
 
-    val selectedForMap =
-        mapStops.firstOrNull {
-            it.stopId == state.selectedStopId
+    LaunchedEffect(state.selectedStopId) {
+        if (state.selectedStopId != null) {
+            val index = state.filteredStops.indexOfFirst { it.stopId == state.selectedStopId }
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+            }
         }
+    }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = 50.dp,
+        containerColor = Color.Transparent,
+        sheetContainerColor = MaterialTheme.colorScheme.surface,
+        sheetContent = {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.5f),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    if (state.isApproximate) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = "Ubicación aproximada. Las distancias pueden ser imprecisas.",
+                                modifier = Modifier.padding(8.dp),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+
+                    if (state.isFromCache) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = "Sin conexión. Mostrando paradas guardadas en caché.",
+                                modifier = Modifier.padding(8.dp),
+                            )
+                        }
+                    }
+
+                    if (state.isDemo) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
+                                modifier = Modifier.padding(8.dp),
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Paradas cerca de vos",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+
+                    when {
+                        state.busStops.isEmpty() -> {
+                            Text(
+                                text = "No hay paradas cerca de tu ubicación.",
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+
+                        state.filteredStops.isEmpty() -> {
+                            Text(
+                                text = "No encontramos paradas con esa búsqueda.",
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.weight(1f),
+                                contentPadding =
+                                    PaddingValues(
+                                        horizontal = 16.dp,
+                                        vertical = 4.dp,
+                                    ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(
+                                    items = state.filteredStops,
+                                    key = {
+                                        it.stopId
+                                    },
+                                ) { stop ->
+                                    BusStopCard(
+                                        stop = stop,
+                                        distanceMeters =
+                                            state.center.distanceMetersTo(
+                                                stop.locationData,
+                                            ),
+                                        selected =
+                                            stop.stopId == state.selectedStopId,
+                                        onClick = {
+                                            onStopClick(stop)
+                                        },
+                                        isFavorite =
+                                            stop.stopId in favoriteIds,
+                                        onFavoriteClick = {
+                                            onToggleFavorite(stop.stopId)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
     ) {
-        if (state.isApproximate) {
-            Surface(
-                color = MaterialTheme.colorScheme.tertiaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "Ubicación aproximada. Las distancias pueden ser imprecisas.",
-                    modifier = Modifier.padding(8.dp),
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-
-        if (state.isFromCache) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "Sin conexión. Mostrando paradas guardadas en caché.",
-                    modifier = Modifier.padding(8.dp),
-                )
-            }
-        }
-
-        if (state.isDemo) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
-                    modifier = Modifier.padding(8.dp),
-                )
-            }
-        }
-
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .clipToBounds(),
         ) {
             OsmMapView(
                 userLocation = state.center,
                 stops = mapStops,
                 selectedStopId = state.selectedStopId,
-                onStopClick = onStopClick,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(260.dp),
+                onStopClick = { stop ->
+                    onStopClick(stop)
+                    coroutineScope.launch {
+                        scaffoldState.bottomSheetState.expand()
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
             )
 
-            if (selectedForMap != null) {
-                Surface(
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(12.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    tonalElevation = 3.dp,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        Text(
-                            text = selectedForMap.name,
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-
-                        val lines =
-                            if (
-                                favoriteStop != null &&
-                                selectedForMap.busLines.isEmpty()
-                            ) {
-                                favoriteStop.lines
-                            } else {
-                                selectedForMap.busLines.joinToString(" · ") {
-                                    "Línea ${it.number}"
-                                }
-                            }
-
-                        Text(
-                            text = lines,
-                        )
-
-                        TextButton(
-                            onClick = {
-                                onOrientClick(selectedForMap)
-                            },
-                        ) {
-                            Text("Orientarme")
-                        }
-                    }
-                }
-            }
-        }
-
-        Text(
-            text = "Paradas cerca de vos",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp),
-        )
-
-        when {
-            state.busStops.isEmpty() -> {
-                Text(
-                    text = "No hay paradas cerca de tu ubicación.",
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-
-            state.filteredStops.isEmpty() -> {
-                Text(
-                    text = "No encontramos paradas con esa búsqueda.",
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding =
-                        PaddingValues(
-                            horizontal = 16.dp,
-                            vertical = 4.dp,
-                        ),
-                    verticalArrangement =
-                        Arrangement.spacedBy(8.dp),
-                ) {
-                    items(
-                        items = state.filteredStops,
-                        key = {
-                            it.stopId
-                        },
-                    ) { stop ->
-                        BusStopCard(
-                            stop = stop,
-                            distanceMeters =
-                                state.center.distanceMetersTo(
-                                    stop.locationData,
-                                ),
-                            selected =
-                                stop.stopId == state.selectedStopId,
-                            onClick = {
-                                onStopClick(stop)
-                            },
-                            isFavorite =
-                                stop.stopId in favoriteIds,
-                            onFavoriteClick = {
-                                onToggleFavorite(stop.stopId)
-                            },
-                        )
-                    }
-                }
-            }
+            HomeHeader(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearchSubmitted = onSearchSubmitted,
+                recentSearches = recentSearches,
+            )
         }
     }
 }

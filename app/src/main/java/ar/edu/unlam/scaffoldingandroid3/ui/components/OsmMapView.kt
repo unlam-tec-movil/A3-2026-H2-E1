@@ -174,7 +174,7 @@ fun OsmMapView(
             },
         )
 
-        // Botón Flotante (FAB) para recentrar el mapa en la ubicación del usuario aplicando zoom
+        // Botón Flotante (FAB) ubicado a la derecha justo debajo de la barra de búsqueda
         FloatingActionButton(
             onClick = {
                 val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
@@ -182,8 +182,8 @@ fun OsmMapView(
             },
             modifier =
                 Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp),
+                    .align(Alignment.TopEnd)
+                    .padding(top = 170.dp, end = 16.dp),
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
         ) {
