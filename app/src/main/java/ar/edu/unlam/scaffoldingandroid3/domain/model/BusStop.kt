@@ -1,5 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.domain.model
 
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.StopStatus
+
 data class BusStop(
     val stopId: Long,
     val name: String,

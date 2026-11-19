@@ -12,6 +12,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BottomTab
 import ar.edu.unlam.scaffoldingandroid3.ui.components.VoyEnBondiBottomBar
+import ar.edu.unlam.scaffoldingandroid3.ui.screens.CompassScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.FavoriteBusStopsScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.HomeScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.NearbyStopsScreen
@@ -35,7 +36,9 @@ fun NavigationWrapper() {
         when (
             backStackEntry?.destination?.route
         ) {
-            MapDestination::class.qualifiedName -> BottomTab.MAP
+            MapDestination::class.qualifiedName,
+            Compass::class.qualifiedName,
+            -> BottomTab.MAP
             RoutesDestination::class.qualifiedName -> BottomTab.ROUTES
             FavoriteBusStops::class.qualifiedName -> BottomTab.FAVORITES
             else -> BottomTab.HOME
@@ -111,7 +114,21 @@ fun NavigationWrapper() {
             }
 
             composable<MapDestination> {
-                NearbyStopsScreen()
+                NearbyStopsScreen(
+                    onNavigateToCompass = { stop ->
+                        navController.navigate(
+                            Compass(
+                                stopName = stop.name,
+                                latitude = stop.locationData.latitude.value,
+                                longitude = stop.locationData.longitude.value,
+                            ),
+                        )
+                    },
+                )
+            }
+
+            composable<Compass> {
+                CompassScreen(onBack = { navController.popBackStack() })
             }
 
             composable<RoutesDestination> {

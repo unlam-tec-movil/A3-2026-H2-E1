@@ -1,23 +1,24 @@
 package ar.edu.unlam.scaffoldingandroid3.data.repositories
 
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.LocationDataSource
-import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
-import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import javax.inject.Inject
 
 /**
- * Implementación de [LocationRepository] que obtiene la ubicación del dispositivo a través
- * de [LocationDataSource].
+ * Implementación de la interfaz de repositorio para datos de ubicación.
  *
- * Esta implementación:
- * - Utiliza [LocationDataSource] para acceder a la última ubicación conocida
- * - Proporciona una ubicación por defecto si no es posible obtener la ubicación real
- * - La ubicación por defecto corresponde a Buenos Aires, Argentina (-34.6037, -58.3816)
+ * Proporciona acceso a los datos de ubicación del dispositivo a través de
+ * la fuente de datos [LocationDataSource].
  *
- * @param dataSource la fuente de datos de ubicación utilizada para obtener la última
- *                   ubicación conocida del dispositivo.
+ * **Funcionalidad**:
+ * - Obtiene los datos de ubicación más recientes conocidos por el dispositivo
+ * - Verifica si el servicio de ubicación está habilitado en el dispositivo
+ *
+ * **Dependencia**: [LocationDataSource] - Fuente de datos para la ubicación del dispositivo.
+ *
+ * @see LocationRepository
+ * @see LocationDataSource
  */
 class LocationRepositoryImpl
     @Inject
@@ -25,48 +26,33 @@ class LocationRepositoryImpl
         private val dataSource: LocationDataSource,
     ) : LocationRepository {
         /**
-         * Obtiene la ubicación actual del dispositivo.
+         * Obtiene los datos de ubicación más recientes conocidos por el dispositivo.
          *
-         * Esta función:
-         * 1. Intenta obtener la última ubicación mediante [LocationDataSource.getLastKnowLocation]
-         * 2. Si no hay ubicación disponible, utiliza [defaultLocation] como fallback
-         * 3. Siempre devuelve una ubicación válida (nunca `null`)
+         * Esta función consulta al dispositivo para obtener la última ubicación conocida,
+         * incluyendo coordenadas de latitud y longitud, y la hora del último registro.
          *
          * **Comportamiento**:
-         * - Si el dataSource devuelve una ubicación, se devuelve esa ubicación
-         * - Si el dataSource devuelve `null`, se devuelve [defaultLocation]
-         * - Nunca devuelve `null`
+         * - Retorna los datos de ubicación si el dispositivo ha registrado una ubicación
+         * - Retorna null si no hay datos de ubicación disponibles
          *
-         * @return una instancia de [LocationData] con la ubicación actual o la ubicación por defecto.
+         * @return los datos de ubicación más recientes, o null si no hay datos disponibles.
+         * @see LocationRepository.getLocationData()
          */
-        override suspend fun getLocationData(): LocationData =
-            runCatching { dataSource.getLastKnowLocation() ?: defaultLocation }.getOrNull()
-                ?: defaultLocation
+        override suspend fun getLocationData(): LocationData? = dataSource.getLastKnowLocation()
 
         /**
-         * Verifica si la ubicación está habilitada en el dispositivo.
+         * Verifica si el servicio de ubicación está habilitado en el dispositivo.
          *
-         * Esta función delega la verificación a [LocationDataSource.isLocationEnabled],
-         * consultando la disponibilidad del servicio de ubicación a través del Fused Location Provider.
+         * Esta función consulta al dispositivo para determinar si el servicio de ubicación
+         * (GPS, redes celulares, etc.) está activado y disponible para usar.
          *
-         * @return `true` si el servicio de ubicación está disponible y habilitado,
-         *         `false` si no hay permisos, el servicio no está disponible o si el resultado está vacío.
+         * **Funcionalidad**:
+         * - Consulta al sistema del dispositivo para verificar el estado del servicio de ubicación
+         * - Retorna true si el servicio está habilitado y disponible
+         * - Retorna false si el servicio está deshabilitado o no disponible
+         *
+         * @return true si el servicio de ubicación está habilitado, false en caso contrario.
+         * @see LocationRepository.isLocationEnabled()
          */
         override suspend fun isLocationEnabled(): Boolean = dataSource.isLocationEnabled()
-
-        /**
-         * Ubicación por defecto utilizada cuando no es posible obtener la ubicación del dispositivo.
-         *
-         * Esta ubicación corresponde a Buenos Aires, Argentina:
-         * - Latitud: -34.6037
-         * - Longitud: -58.3816
-         *
-         * Se utiliza como fallback para garantizar que siempre se devuelve una ubicación válida,
-         * incluso si el Fused Location Provider no está disponible o no hay permisos.
-         */
-        private val defaultLocation =
-            LocationData(
-                latitude = Latitude(-34.6037),
-                longitude = Longitude(-58.3816),
-            )
     }

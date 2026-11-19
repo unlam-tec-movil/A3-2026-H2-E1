@@ -3,47 +3,49 @@ package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 
 /**
- * Interfaz de DataSource para obtener datos de ubicación del dispositivo.
+ * Interfaz de fuente de datos para obtener información de ubicación del dispositivo.
  *
- * Esta interfaz define el contrato para fuentes de datos locales que proporcionan
- * acceso a la última ubicación conocida del dispositivo. Las implementaciones típicas
- * utilizan el Fused Location Provider de Google Play Services.
+ * Esta interfaz define los métodos para acceder a los datos de ubicación del dispositivo,
+ * incluyendo la última ubicación conocida y el estado del servicio de ubicación.
  *
- * @since 1.0
+ * **Funcionalidad**:
+ * - Obtiene los datos de ubicación más recientes del dispositivo
+ * - Verifica si el servicio de ubicación está habilitado
+ *
+ * **Uso**: Esta interfaz es implementada por [LocationDataSourceImpl] para proporcionar
+ * acceso a los datos de ubicación del dispositivo.
+ *
+ * @see LocationDataSourceImpl
+ * @see LocationData
  */
 interface LocationDataSource {
     /**
-     * Obtiene la última ubicación conocida del dispositivo.
+     * Obtiene los datos de ubicación más recientes conocidos por el dispositivo.
      *
-     * Esta función consulta la fuente de datos subyacente para recuperar la última
-     * ubicación disponible. El comportamiento exacto depende de la implementación:
-     * - Puede devolver `null` si no hay ubicación disponible
-     * - Puede devolver una ubicación reciente o en caché
-     * - Puede devolver `null` si no hay permisos de ubicación
+     * Esta función consulta al dispositivo para obtener la última ubicación registrada,
+     * incluyendo las coordenadas de latitud y longitud, así como la hora del último
+     * registro de ubicación.
      *
-     * **Nota**: Esta operación es suspendida y debe ejecutarse en un contexto
-     * adecuado para corutinas (como un coroutine scope o suspend function).
+     * **Comportamiento**:
+     * - Retorna los datos de ubicación si el dispositivo ha registrado una ubicación
+     * - Retorna null si no hay datos de ubicación disponibles
      *
-     * @return una instancia de [LocationData] con la última ubicación conocida, o `null`
-     *         si no es posible obtener la ubicación.
+     * @return los datos de ubicación más recientes, o null si no hay datos disponibles.
+     * @see LocationData
      */
     suspend fun getLastKnowLocation(): LocationData?
 
     /**
-     * Verifica si la ubicación está habilitada en el dispositivo.
+     * Verifica si el servicio de ubicación está habilitado en el dispositivo.
      *
-     * Esta función consulta la fuente de datos subyacente para verificar si el servicio
-     * de ubicación está disponible y habilitado. El comportamiento exacto depende de la
-     * implementación, pero típicamente:
-     * - Devuelve `true` si el GPS o el proveedor de red está habilitado
-     * - Devuelve `false` si no hay permisos de ubicación
-     * - Devuelve `false` si el servicio de ubicación no está disponible
+     * Esta función consulta al dispositivo para determinar si el servicio de ubicación
+     * (GPS, redes celulares, etc.) está activado y disponible para usar.
      *
-     * **Nota**: Esta operación es suspendida y debe ejecutarse en un contexto
-     * adecuado para corutinas (como un coroutine scope o suspend function).
+     * **Comportamiento**:
+     * - Retorna true si el servicio de ubicación está habilitado y disponible
+     * - Retorna false si el servicio está deshabilitado o no disponible
      *
-     * @return `true` si el servicio de ubicación está disponible y habilitado,
-     *         `false` si no hay permisos o si el servicio no está disponible.
+     * @return true si el servicio de ubicación está habilitado, false en caso contrario.
      */
     suspend fun isLocationEnabled(): Boolean
 }

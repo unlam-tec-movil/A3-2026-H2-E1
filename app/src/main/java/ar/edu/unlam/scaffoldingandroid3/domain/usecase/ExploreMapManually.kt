@@ -9,5 +9,5 @@ class ExploreMapManually
     constructor(
         private val locationRepository: LocationRepository,
     ) {
-        suspend operator fun invoke(): LocationData = locationRepository.getLocationData()
+        suspend operator fun invoke(): LocationData? = locationRepository.getLocationData()
     }

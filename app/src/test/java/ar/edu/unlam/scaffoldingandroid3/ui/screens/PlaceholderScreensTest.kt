@@ -15,18 +15,6 @@ class PlaceholderScreensTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun `given the map screen, when it is shown, then displays the coming soon message`() {
-        // Given / When
-        composeTestRule.setContent { VoyEnBondiTheme { MapScreen() } }
-
-        // Then
-        composeTestRule.onNodeWithText("Explorá el mapa").assertIsDisplayed()
-        composeTestRule
-            .onNodeWithText("Próximamente vas a poder explorar las paradas de colectivo en el mapa.")
-            .assertIsDisplayed()
-    }
-
-    @Test
     fun `given the routes screen, when it is shown, then displays the trip planning message`() {
         // Given / When
         composeTestRule.setContent { VoyEnBondiTheme { RoutesScreen() } }

@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.location.LocationManager
 import androidx.annotation.RequiresPermission
-import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.LocationMapper
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -12,80 +12,120 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 /**
- * Implementación de [LocationDataSource] que utiliza el Fused Location Provider de Google
- * para obtener la última ubicación conocida del dispositivo.
+ * Implementación de la fuente de datos para ubicación del dispositivo.
  *
- * Esta implementación:
- * - Utiliza [FusedLocationProviderClient] para acceder al servicio de ubicación unificado
- * - Convierte los datos de ubicación brutos al modelo de dominio mediante [LocationMapper]
- * - Maneja permisos de ubicación finos y gruesos mediante [RequiresPermission]
- * - Utiliza [Context.LOCATION_SERVICE] para verificar la disponibilidad del servicio de ubicación
+ * Esta clase proporciona la implementación concreta de [LocationDataSource], encargada de
+ * obtener los datos de ubicación del dispositivo utilizando el Fused Location Provider de
+ * Google Play Services. Gestiona el acceso a las últimas ubicaciones conocidas y verifica
+ * el estado del servicio de ubicación.
  *
- * @param locationProvider el cliente de proveedor de ubicación de Google para obtener
- *                         la última ubicación del dispositivo.
- * @param mapper el mapeador utilizado para convertir datos de ubicación brutos al modelo
- *               de dominio [LocationData].
- * @param context el contexto de la aplicación utilizado para obtener el servicio de
- *                ubicación [LocationManager].
+ * **Funcionalidad**:
+ * - Obtiene la última ubicación conocida del dispositivo mediante el Fused Location Provider
+ * - Verifica si los proveedores de ubicación (GPS y red) están habilitados
+ * - Mapea los datos de ubicación brutos al modelo de dominio [LocationData]
+ *
+ * **Dependencias**:
+ * - Requiere [FusedLocationProviderClient] para acceder al Fused Location Provider
+ * - Utiliza [LocationMapper] para mapear los datos de ubicación del dispositivo al modelo de dominio
+ * - Necesita acceso al contexto de la aplicación para interactuar con [LocationManager]
+ *
+ * **Permisos**:
+ * - Requiere permisos de ubicación fina y gruesa para obtener la última ubicación conocida
+ * - Verifica el estado de los proveedores de ubicación (GPS y red)
+ *
+ * @see LocationDataSource
+ * @see LocationMapper
+ * @see FusedLocationProviderClient
+ * @see LocationManager
  */
 class LocationDataSourceImpl
     @Inject
     constructor(
+        /**
+         * Cliente del Fused Location Provider de Google Play Services.
+         *
+         * Utilizado para obtener la última ubicación conocida del dispositivo de manera
+         * eficiente y unificada, combinando datos de múltiples fuentes de ubicación
+         * (GPS, redes celulares, Wi-Fi, etc.).
+         *
+         * @see FusedLocationProviderClient
+         */
         private val locationProvider: FusedLocationProviderClient,
+        /**
+         * Mapeador de datos de ubicación.
+         *
+         * Utilizado para convertir los datos de ubicación del dispositivo (Model) al modelo
+         * de dominio (Domain) de la aplicación.
+         *
+         * @see LocationMapper
+         */
         private val mapper: LocationMapper,
+        /**
+         * Contexto de la aplicación.
+         *
+         * Utilizado para acceder al [LocationManager] y verificar el estado de los
+         * proveedores de ubicación (GPS y red).
+         *
+         * @see Context
+         * @see LocationManager
+         */
         @ApplicationContext private val context: Context,
     ) : LocationDataSource {
         /**
          * Obtiene la última ubicación conocida del dispositivo.
          *
-         * Esta función:
-         * 1. Solicita la última ubicación mediante [FusedLocationProviderClient.lastLocation]
-         * 2. Convierte los datos brutos al modelo de dominio usando [LocationMapper.toDomain]
-         * 3. Devuelve `null` si no hay ubicación disponible o si ocurre un error
-         *
-         * **Requisitos de permisos**: Requiere ambos permisos de ubicación:
-         * - [Manifest.permission.ACCESS_FINE_LOCATION] para precisión de GPS
-         * - [Manifest.permission.ACCESS_COARSE_LOCATION] para ubicación aproximada
+         * Esta función consulta al Fused Location Provider para obtener la última ubicación
+         * registrada por el dispositivo, incluyendo las coordenadas de latitud y longitud,
+         * así como la hora del último registro de ubicación.
          *
          * **Comportamiento**:
-         * - Si no hay permisos, devuelve `null`
-         * - Si el Fused Location Provider no está disponible, devuelve `null`
-         * - Si la ubicación no está disponible, devuelve `null`
-         * - Si ocurre una excepción durante la obtención, captura y devuelve `null`
+         * - Retorna los datos de ubicación si el dispositivo ha registrado una ubicación
+         * - Retorna null si no hay datos de ubicación disponibles o si el acceso falla
          *
-         * @return una instancia de [LocationData] con la última ubicación conocida, o `null`
-         *         si no es posible obtener la ubicación.
+         * **Requisitos**:
+         * - Requiere permisos de ubicación fina y gruesa ([Manifest.permission.ACCESS_FINE_LOCATION], [Manifest.permission.ACCESS_COARSE_LOCATION])
+         * - Requiere que el Fused Location Provider esté disponible
+         *
+         * @return los datos de ubicación más recientes, o null si no hay datos disponibles o si el acceso falla.
+         * @see LocationData
+         * @see Manifest.permission.ACCESS_FINE_LOCATION
+         * @see Manifest.permission.ACCESS_COARSE_LOCATION
          */
-        @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+        @RequiresPermission(
+            allOf = [
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ],
+        )
         override suspend fun getLastKnowLocation(): LocationData? =
             runCatching {
                 locationProvider.lastLocation.await()
             }.getOrNull()?.let { mapper.toDomain(it) }
 
         /**
-         * Verifica si la ubicación está habilitada en el dispositivo.
+         * Verifica si el servicio de ubicación está habilitado en el dispositivo.
          *
-         * Esta función:
-         * 1. Obtiene el servicio de ubicación a través de [Context.LOCATION_SERVICE]
-         * 2. Verifica si el proveedor GPS está habilitado mediante [android.provider.Settings.Secure.isLocationProviderEnabled]
-         * 3. Verifica si el proveedor de red está habilitado mediante [android.provider.Settings.Secure.isLocationProviderEnabled]
-         * 4. Devuelve `true` si al menos uno de los proveedores está habilitado
-         *
-         * **Requisitos de permisos**: Requiere ambos permisos de ubicación:
-         * - [Manifest.permission.ACCESS_FINE_LOCATION] para precisión de GPS
-         * - [Manifest.permission.ACCESS_COARSE_LOCATION] para ubicación aproximada
+         * Esta función consulta al [LocationManager] para determinar si los proveedores de
+         * ubicación (GPS y red) están habilitados y disponibles para usar.
          *
          * **Comportamiento**:
-         * - Si no hay permisos, devuelve `false`
-         * - Si el GPS está habilitado, devuelve `true`
-         * - Si la red está habilitada, devuelve `true`
-         * - Si ninguno está habilitado, devuelve `false`
+         * - Verifica si el proveedor GPS ([LocationManager.GPS_PROVIDER]) está habilitado
+         * - Verifica si el proveedor de red ([LocationManager.NETWORK_PROVIDER]) está habilitado
+         * - Retorna true si al menos uno de los proveedores está habilitado
+         * - Retorna false si ambos proveedores están deshabilitados
          *
-         * @return `true` si al menos uno de los proveedores de ubicación (GPS o red)
-         *         está habilitado, `false` si no hay permisos o si ningún proveedor
-         *         está disponible.
+         * @return true si al menos un proveedor de ubicación (GPS o red) está habilitado,
+         * false si ambos proveedores están deshabilitados.
+         * @see LocationManager
+         * @see LocationManager.GPS_PROVIDER
+         * @see LocationManager.NETWORK_PROVIDER
          */
-        @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+        @RequiresPermission(
+            allOf = [
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ],
+        )
         override suspend fun isLocationEnabled(): Boolean {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)

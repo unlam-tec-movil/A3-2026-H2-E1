@@ -12,7 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.domain.SearchHistory
+import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

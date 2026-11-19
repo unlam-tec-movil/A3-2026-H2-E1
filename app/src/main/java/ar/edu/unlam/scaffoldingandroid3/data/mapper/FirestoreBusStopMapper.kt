@@ -1,35 +1,40 @@
 package ar.edu.unlam.scaffoldingandroid3.data.mapper
 
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.BusStopMapper.toLineNumber
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.BusStopMapper.toStableLong
 import ar.edu.unlam.scaffoldingandroid3.data.model.FirestoreBusLine
 import ar.edu.unlam.scaffoldingandroid3.data.model.FirestoreBusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.BusLine
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.BusLineStatus
+import ar.edu.unlam.scaffoldingandroid3.domain.enums.StopStatus
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
+
+private const val FALLBACK_STOP_NAME = "Parada de Colectivo"
 
 object FirestoreBusStopMapper {
     fun FirestoreBusStop.toDomain(documentId: String): BusStop? {
         val loc = location ?: return null
 
         return BusStop(
-            id = documentId,
-            name = name.ifBlank { "Parada de Colectivo" },
-            lines = lines.map { it.toDomain() },
-            location = GeoPoint(latitude = loc.latitude, longitude = loc.longitude),
+            stopId = documentId.toStableLong(),
+            name = name.ifBlank { FALLBACK_STOP_NAME },
+            locationData = LocationData(latitude = Latitude(loc.latitude), longitude = Longitude(loc.longitude)),
+            markedAsFavorite = false,
+            busLines = lines.map { it.toDomain() }.distinctBy { it.lineId },
+            status = StopStatus.ACTIVA,
         )
     }
 
     fun FirestoreBusLine.toDomain(): BusLine {
-        val dest = destination?.trim() ?: ""
-        val formattedDestination =
-            when (dest.uppercase()) {
-                "I" -> "Ida"
-                "V" -> "Vuelta"
-                else -> if (dest.isNotBlank()) dest else "Sentido no especificado"
-            }
-
+        val lineCode = code.trim().ifBlank { "-" }
         return BusLine(
-            code = code.ifBlank { "-" },
-            destination = formattedDestination,
+            lineId = lineCode.toStableLong(),
+            number = lineCode.toLineNumber(),
+            routes = emptyList(),
+            currentStatus = BusLineStatus.NORMAL,
         )
     }
 }

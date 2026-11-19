@@ -16,6 +16,7 @@
     - [Main Activity](#main-activity)
         - [Navigation](#navigation)
 - [Data](#data)
+- [Convenciones de este proyecto](#convenciones-de-este-proyecto)
 
 Este repositorio se presenta como una referencia para organizar un proyecto de Android. La elección
 de packages está basada en las recomendaciones de android [1] y en la arquitectura hexagonal.
@@ -353,6 +354,56 @@ Aquí estará la implementación del consumo de apis externas.
 Aquí estará la implementación del consumo de bases de datos locales.
 
 ![Power](https://github.com/unlam-tec-movil/ScaffoldingV2/assets/5816687/200d9f10-2a71-409a-90ba-103ddffa9758)
+
+# Convenciones de este proyecto
+
+Las convenciones que se acordaron tras unificar las dos arquitecturas iniciales del grupo.
+Aplican a todo cambio nuevo antes de pedir revisión.
+
+## Jerarquía de packages
+
+```text
+domain/
+├── model/        modelos de negocio puros (BusStop, BusLine, LocationData, NearbyStopsResult…)
+├── repository/   contratos (interfaces) que el dominio expone
+└── usecase/      casos de uso inyectables
+
+data/
+├── datasources/  una interfaz + implementación por fuente
+│   ├── remote/   MongoDB Atlas ($nearSphere)
+│   ├── demo/     paradas de ejemplo generadas alrededor del pasajero
+│   └── local/    sensores y ubicación del dispositivo
+├── repositories/ implementaciones de los contratos de domain/repository
+├── mapper/       conversión entre DTOs/entidades y modelos de dominio
+└── database/     cliente de Mongo y Room
+
+ui/
+├── screens/      pantallas (contenedores)
+├── components/   composables reutilizables
+├── viewmodel/    ViewModels de Hilt
+├── uistate/      estados de UI como sealed interfaces
+├── navigation/   rutas y NavHost
+└── theme/        colores y tema
+```
+
+## Reglas acordadas
+
+- **Ubicación**: `LocationData` (con `Latitude`/`Longitude` value classes) es el modelo único de
+  ubicación. Ninguna capa fuera de `data` usa `Location` de Android ni coordenadas "sueltas".
+- **Unidades**: el dominio trabaja en metros; kilómetros solo al formatear en UI.
+- **Sin fallback silencioso de ubicación**: `LocationRepository.getLocationData()` devuelve
+  `LocationData?` y la presentación decide cómo comunicar que no hay ubicación.
+- **Degradación de la fuente de paradas**: remoto → caché de Room → demo. El repositorio
+  reporta el origen en `NearbyStopsResult.origin` para que la UI informe al pasajero.
+- **Identificador de parada**: `stopId: Long`. El ObjectId de MongoDB se convierte con un hash
+  FNV-1a de 64 bits, determinista entre ejecuciones y dispositivos.
+- **ViewModels**: `@HiltViewModel` + estados en `ui/uistate`; la pantalla no maneja lógica de
+  estado a mano.
+- **Secretos**: nunca en el código. La URI de MongoDB se configura en `local.properties`
+  (gitignored) y llega al código vía `BuildConfig.MONGODB_URI`. Sin ella, la app arranca igual
+  degradando a caché/demo.
+- **Versiones de dependencias**: centralizadas en `gradle/libs.versions.toml`, nada suelto en
+  `app/build.gradle.kts`.
 
 [1]: https://martinfowler.com/bliki/DomainDrivenDesign.html
 

@@ -23,8 +23,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import ar.edu.unlam.scaffoldingandroid3.R
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.CustomZoomButtonsController
@@ -36,9 +36,9 @@ import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
 @Composable
 fun OsmMapView(
-    userLocation: GeoPoint,
+    userLocation: LocationData,
     stops: List<BusStop>,
-    selectedStopId: String?,
+    selectedStopId: Long?,
     onStopClick: (BusStop) -> Unit,
     modifier: Modifier = Modifier,
     focusTrigger: Int = 0,
@@ -84,15 +84,15 @@ fun OsmMapView(
                 setMultiTouchControls(true)
                 zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
                 controller.setZoom(15.5)
-                controller.setCenter(OsmGeoPoint(userLocation.latitude, userLocation.longitude))
+                controller.setCenter(OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value))
             }
         }
 
     LaunchedEffect(selectedStopId, focusTrigger) {
         if (selectedStopId != null) {
-            val selectedStop = stops.firstOrNull { it.id == selectedStopId }
+            val selectedStop = stops.firstOrNull { it.stopId == selectedStopId }
             if (selectedStop != null) {
-                val stopOsmPoint = OsmGeoPoint(selectedStop.location.latitude, selectedStop.location.longitude)
+                val stopOsmPoint = OsmGeoPoint(selectedStop.locationData.latitude.value, selectedStop.locationData.longitude.value)
                 mapView.controller.animateTo(stopOsmPoint, 17.0, 1000L)
             }
         }
@@ -125,7 +125,7 @@ fun OsmMapView(
             factory = { mapView },
             modifier = Modifier.matchParentSize().clipToBounds(),
             update = { map ->
-                val userOsmPoint = OsmGeoPoint(userLocation.latitude, userLocation.longitude)
+                val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
 
                 map.overlays.clear()
 
@@ -152,13 +152,13 @@ fun OsmMapView(
 
                 // Marcadores de las paradas
                 stops.forEach { stop ->
-                    val stopPoint = OsmGeoPoint(stop.location.latitude, stop.location.longitude)
-                    val isSelected = stop.id == selectedStopId
+                    val stopPoint = OsmGeoPoint(stop.locationData.latitude.value, stop.locationData.longitude.value)
+                    val isSelected = stop.stopId == selectedStopId
                     val stopMarker =
                         Marker(map).apply {
                             position = stopPoint
                             title = stop.name
-                            snippet = stop.lines.joinToString(" · ") { it.code }
+                            snippet = stop.busLines.joinToString(" · ") { "Línea ${it.number}" }
                             icon = if (isSelected) selectedBlueIconDrawable else blueIconDrawable
                             infoWindow = null
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
@@ -177,7 +177,7 @@ fun OsmMapView(
         // Botón Flotante (FAB) para recentrar el mapa en la ubicación del usuario aplicando zoom
         FloatingActionButton(
             onClick = {
-                val userOsmPoint = OsmGeoPoint(userLocation.latitude, userLocation.longitude)
+                val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
                 mapView.controller.animateTo(userOsmPoint, 17.0, 1000L)
             },
             modifier =

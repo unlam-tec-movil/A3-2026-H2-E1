@@ -1,6 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 
 import app.cash.turbine.test
+import ar.edu.unlam.scaffoldingandroid3.dispatcher.MainDispatcherRule
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.FavoriteBusStopRepository
 import io.mockk.coEvery
 import io.mockk.coVerify

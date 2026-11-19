@@ -1,4 +1,3 @@
-
 package ar.edu.unlam.scaffoldingandroid3
 
 import android.os.Bundle

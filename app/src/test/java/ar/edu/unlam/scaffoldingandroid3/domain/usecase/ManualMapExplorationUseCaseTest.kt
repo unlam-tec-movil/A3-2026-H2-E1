@@ -7,10 +7,10 @@ import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 
 class ManualMapExplorationUseCaseTest {
@@ -19,22 +19,27 @@ class ManualMapExplorationUseCaseTest {
         ExploreMapManually(mockRepository)
 
     @Test
-    @DisplayName("Retornar ubicación de fallback al explorar mapa manualmente")
-    fun returnFallbackLocationWhenExploringMapManually() =
+    @DisplayName("Debería devolver la última ubicación conocida del dispositivo")
+    fun returnLocationWhenExploringMapManually() =
         runTest {
-            assertDoesNotThrow {
-                val expectedLocation =
-                    LocationData(
-                        Latitude(-34.6037),
-                        Longitude(-58.3816),
-                    )
+            val expectedLocation =
+                LocationData(
+                    Latitude(-34.6037),
+                    Longitude(-58.3816),
+                )
 
-                coEvery { mockRepository.getLocationData() } returns expectedLocation
+            coEvery { mockRepository.getLocationData() } returns expectedLocation
 
-                val result = useCase()
+            assertEquals(expectedLocation, useCase())
+        }
 
-                Assertions.assertEquals(expectedLocation, result)
-            }
+    @Test
+    @DisplayName("Debería devolver null cuando no hay ubicación conocida, sin fallback silencioso")
+    fun shouldReturnNullWhenThereIsNoKnownLocation() =
+        runTest {
+            coEvery { mockRepository.getLocationData() } returns null
+
+            assertNull(useCase())
         }
 
     @Test

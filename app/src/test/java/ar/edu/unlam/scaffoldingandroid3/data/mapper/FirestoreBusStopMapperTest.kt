@@ -1,13 +1,8 @@
 package ar.edu.unlam.scaffoldingandroid3.data.mapper
 
-import ar.edu.unlam.scaffoldingandroid3.data.mapper.BusStopMapper.toCacheEntity
-import ar.edu.unlam.scaffoldingandroid3.data.mapper.BusStopMapper.toDomain
 import ar.edu.unlam.scaffoldingandroid3.data.mapper.FirestoreBusStopMapper.toDomain
 import ar.edu.unlam.scaffoldingandroid3.data.model.FirestoreBusLine
 import ar.edu.unlam.scaffoldingandroid3.data.model.FirestoreBusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.BusLine
-import ar.edu.unlam.scaffoldingandroid3.domain.BusStop
-import ar.edu.unlam.scaffoldingandroid3.domain.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -16,76 +11,51 @@ import com.google.firebase.firestore.GeoPoint as FirestoreGeoPoint
 
 class FirestoreBusStopMapperTest {
     @Test
-    fun toDomain_correctlyMapsFirestoreBusStopAndDestinations() {
+    fun toDomain_mapsNameLocationAndLines() {
         val firestoreStop =
             FirestoreBusStop(
                 name = "1524 DEFENSA",
-                lines =
-                    listOf(
-                        FirestoreBusLine(code = "22", destination = "v"),
-                        FirestoreBusLine(code = "53", destination = "i"),
-                        FirestoreBusLine(code = "152", destination = "otro"),
-                        FirestoreBusLine(code = "60", destination = null),
-                    ),
+                lines = listOf(FirestoreBusLine(code = "22"), FirestoreBusLine(code = "10A")),
                 location = FirestoreGeoPoint(-34.62567626, -58.37100073),
                 geohash = "69y7p8xdc4",
             )
 
-        val domainStop = firestoreStop.toDomain("doc-id-123")
-        assertNotNull(domainStop)
+        val stop = firestoreStop.toDomain("doc-id-123")
 
-        assertEquals("doc-id-123", domainStop!!.id)
-        assertEquals("1524 DEFENSA", domainStop.name)
-        assertEquals(-34.62567626, domainStop.location.latitude, 0.00001)
-        assertEquals(-58.37100073, domainStop.location.longitude, 0.00001)
-        assertEquals(4, domainStop.lines.size)
+        assertNotNull(stop)
+        assertEquals("1524 DEFENSA", stop!!.name)
+        assertEquals(-34.62567626, stop.locationData.latitude.value, 0.00001)
+        assertEquals(-58.37100073, stop.locationData.longitude.value, 0.00001)
+        assertEquals(listOf(22, 10), stop.busLines.map { it.number })
+    }
 
-        assertEquals("22", domainStop.lines[0].code)
-        assertEquals("Vuelta", domainStop.lines[0].destination)
+    @Test
+    fun toDomain_producesTheSameStopIdForTheSameDocument() {
+        val firestoreStop = FirestoreBusStop(name = "A", location = FirestoreGeoPoint(0.0, 0.0))
 
-        assertEquals("53", domainStop.lines[1].code)
-        assertEquals("Ida", domainStop.lines[1].destination)
-
-        assertEquals("152", domainStop.lines[2].code)
-        assertEquals("otro", domainStop.lines[2].destination)
-
-        assertEquals("60", domainStop.lines[3].code)
-        assertEquals("Sentido no especificado", domainStop.lines[3].destination)
+        assertEquals(firestoreStop.toDomain("doc")!!.stopId, firestoreStop.toDomain("doc")!!.stopId)
     }
 
     @Test
     fun toDomain_returnsNullForNullLocation() {
-        val firestoreStop =
-            FirestoreBusStop(
-                name = "Parada Sin Ubicacion",
-                lines = emptyList(),
-                location = null,
-                geohash = "",
-            )
-
-        val domainStop = firestoreStop.toDomain("doc-id-999")
-        assertNull(domainStop)
+        assertNull(FirestoreBusStop(name = "Sin ubicacion").toDomain("doc"))
     }
 
     @Test
-    fun busStop_toCacheEntityAndToDomain_preservesAllData() {
-        val original =
-            BusStop(
-                id = "stop-123",
-                name = "Av. San Martín y Belgrano",
-                lines = listOf(BusLine("96", "Plaza Once"), BusLine("185", "Liniers")),
-                location = GeoPoint(latitude = -34.6705, longitude = -58.5628),
-            )
+    fun toDomain_usesFallbackNameWhenBlank() {
+        val stop = FirestoreBusStop(name = " ", location = FirestoreGeoPoint(0.0, 0.0)).toDomain("doc")
 
-        val entity = original.toCacheEntity()
-        val restored = entity.toDomain()
+        assertEquals("Parada de Colectivo", stop!!.name)
+    }
 
-        assertEquals(original.id, restored.id)
-        assertEquals(original.name, restored.name)
-        assertEquals(original.location.latitude, restored.location.latitude, 0.0001)
-        assertEquals(original.location.longitude, restored.location.longitude, 0.0001)
-        assertEquals(original.lines.size, restored.lines.size)
-        assertEquals(original.lines[0].code, restored.lines[0].code)
-        assertEquals(original.lines[0].destination, restored.lines[0].destination)
+    @Test
+    fun toDomain_dropsDuplicatedLines() {
+        val stop =
+            FirestoreBusStop(
+                lines = listOf(FirestoreBusLine(code = "22"), FirestoreBusLine(code = "22")),
+                location = FirestoreGeoPoint(0.0, 0.0),
+            ).toDomain("doc")
+
+        assertEquals(1, stop!!.busLines.size)
     }
 }

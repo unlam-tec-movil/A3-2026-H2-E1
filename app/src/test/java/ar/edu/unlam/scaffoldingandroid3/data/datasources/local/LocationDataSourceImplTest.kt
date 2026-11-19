@@ -3,7 +3,7 @@ package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 import android.content.Context
 import android.location.Location
 import android.location.LocationManager
-import ar.edu.unlam.scaffoldingandroid3.data.datasources.mapper.LocationMapper
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.LocationMapper
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory.DataFactory.locationDataInstance
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.tasks.Tasks
