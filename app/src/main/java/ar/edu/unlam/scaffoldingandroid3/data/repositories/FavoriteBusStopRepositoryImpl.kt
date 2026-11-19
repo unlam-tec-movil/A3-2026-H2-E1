@@ -47,8 +47,7 @@ class FavoriteBusStopRepositoryImpl(
         )
     }
 
-    override suspend fun isFavorite(stopId: Long): Boolean =
-        stopId in favoriteIds.value
+    override suspend fun isFavorite(stopId: Long): Boolean = stopId in favoriteIds.value
 
     private fun persist(
         ids: Set<Long>,
@@ -69,12 +68,12 @@ class FavoriteBusStopRepositoryImpl(
         }
 
         val saved =
-            preferences.edit()
+            preferences
+                .edit()
                 .putStringSet(
                     FAVORITES_KEY,
                     ids.map { it.toString() }.toSet(),
-                )
-                .putString(SNAPSHOTS_KEY, json.toString())
+                ).putString(SNAPSHOTS_KEY, json.toString())
                 .commit()
 
         if (!saved) {
@@ -88,10 +87,11 @@ class FavoriteBusStopRepositoryImpl(
     }
 
     private fun loadIds(): Set<Long> =
-        preferences.getStringSet(
-            FAVORITES_KEY,
-            emptySet(),
-        ).orEmpty()
+        preferences
+            .getStringSet(
+                FAVORITES_KEY,
+                emptySet(),
+            ).orEmpty()
             .mapNotNull { it.toLongOrNull() }
             .toSet()
 
@@ -101,20 +101,21 @@ class FavoriteBusStopRepositoryImpl(
         return try {
             val json = JSONArray(stored)
 
-            (0 until json.length()).mapNotNull { index ->
-                try {
-                    val item = json.getJSONObject(index)
-                    FavoriteStopSnapshot(
-                        stopId = item.getLong("stopId"),
-                        name = item.getString("name"),
-                        latitude = item.getDouble("latitude"),
-                        longitude = item.getDouble("longitude"),
-                        lines = item.getString("lines"),
-                    )
-                } catch (_: Exception) {
-                    null
-                }
-            }.filter { it.stopId in favoriteIds.value }
+            (0 until json.length())
+                .mapNotNull { index ->
+                    try {
+                        val item = json.getJSONObject(index)
+                        FavoriteStopSnapshot(
+                            stopId = item.getLong("stopId"),
+                            name = item.getString("name"),
+                            latitude = item.getDouble("latitude"),
+                            longitude = item.getDouble("longitude"),
+                            lines = item.getString("lines"),
+                        )
+                    } catch (_: Exception) {
+                        null
+                    }
+                }.filter { it.stopId in favoriteIds.value }
         } catch (_: Exception) {
             emptyList()
         }

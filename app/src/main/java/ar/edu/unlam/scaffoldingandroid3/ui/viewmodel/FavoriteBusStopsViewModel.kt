@@ -14,54 +14,53 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FavoriteBusStopsViewModel
-@Inject
-constructor(
-    private val repository: FavoriteBusStopRepository,
-) : ViewModel() {
+    @Inject
+    constructor(
+        private val repository: FavoriteBusStopRepository,
+    ) : ViewModel() {
+        val favoriteStopIds =
+            repository.observeFavoriteStopIds().stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptySet(),
+            )
 
-    val favoriteStopIds =
-        repository.observeFavoriteStopIds().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptySet(),
-        )
+        val favoriteStops =
+            repository.observeFavoriteStops().stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
 
-    val favoriteStops =
-        repository.observeFavoriteStops().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
-
-    fun addFavorite(stopId: Long) {
-        viewModelScope.launch {
-            repository.addFavorite(stopId)
-        }
-    }
-
-    fun removeFavorite(stopId: Long) {
-        viewModelScope.launch {
-            repository.removeFavorite(stopId)
-        }
-    }
-
-    fun toggleFavorite(stopId: Long) {
-        viewModelScope.launch {
-            if (repository.isFavorite(stopId)) {
-                repository.removeFavorite(stopId)
-            } else {
+        fun addFavorite(stopId: Long) {
+            viewModelScope.launch {
                 repository.addFavorite(stopId)
             }
         }
-    }
 
-    fun toggleFavorite(stop: BusStop) {
-        viewModelScope.launch {
-            if (repository.isFavorite(stop.stopId)) {
-                repository.removeFavorite(stop.stopId)
-            } else {
-                repository.addFavorite(stop.toFavoriteSnapshot())
+        fun removeFavorite(stopId: Long) {
+            viewModelScope.launch {
+                repository.removeFavorite(stopId)
+            }
+        }
+
+        fun toggleFavorite(stopId: Long) {
+            viewModelScope.launch {
+                if (repository.isFavorite(stopId)) {
+                    repository.removeFavorite(stopId)
+                } else {
+                    repository.addFavorite(stopId)
+                }
+            }
+        }
+
+        fun toggleFavorite(stop: BusStop) {
+            viewModelScope.launch {
+                if (repository.isFavorite(stop.stopId)) {
+                    repository.removeFavorite(stop.stopId)
+                } else {
+                    repository.addFavorite(stop.toFavoriteSnapshot())
+                }
             }
         }
     }
-}

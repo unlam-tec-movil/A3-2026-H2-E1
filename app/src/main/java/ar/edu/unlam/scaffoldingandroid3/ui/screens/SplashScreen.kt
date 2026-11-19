@@ -8,8 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,9 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun SplashScreen(
-    onAnimationFinished: () -> Unit,
-) {
+fun SplashScreen(onAnimationFinished: () -> Unit) {
     val busScale = remember { Animatable(0.65f) }
     val busOpacity = remember { Animatable(0f) }
     val textOpacity = remember { Animatable(0f) }
@@ -64,19 +62,21 @@ fun SplashScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFDDF4FF)),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color(0xFFDDF4FF)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Image(
             painter = painterResource(R.drawable.voy_en_bondi_bus),
             contentDescription = "Colectivo de Voy en Bondi",
-            modifier = Modifier
-                .size(220.dp)
-                .scale(busScale.value)
-                .alpha(busOpacity.value),
+            modifier =
+                Modifier
+                    .size(220.dp)
+                    .scale(busScale.value)
+                    .alpha(busOpacity.value),
         )
 
         Spacer(modifier = Modifier.height(24.dp))
