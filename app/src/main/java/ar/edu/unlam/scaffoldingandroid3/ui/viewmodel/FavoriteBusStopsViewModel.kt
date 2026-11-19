@@ -3,6 +3,8 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.toFavoriteSnapshot
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.FavoriteBusStopRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,13 +19,18 @@ class FavoriteBusStopsViewModel
         private val repository: FavoriteBusStopRepository,
     ) : ViewModel() {
         val favoriteStopIds =
-            repository
-                .observeFavoriteStopIds()
-                .stateIn(
-                    scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(5_000),
-                    initialValue = emptySet(),
-                )
+            repository.observeFavoriteStopIds().stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptySet(),
+            )
+
+        val favoriteStops =
+            repository.observeFavoriteStops().stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            )
 
         fun addFavorite(stopId: Long) {
             viewModelScope.launch {
@@ -43,6 +50,16 @@ class FavoriteBusStopsViewModel
                     repository.removeFavorite(stopId)
                 } else {
                     repository.addFavorite(stopId)
+                }
+            }
+        }
+
+        fun toggleFavorite(stop: BusStop) {
+            viewModelScope.launch {
+                if (repository.isFavorite(stop.stopId)) {
+                    repository.removeFavorite(stop.stopId)
+                } else {
+                    repository.addFavorite(stop.toFavoriteSnapshot())
                 }
             }
         }

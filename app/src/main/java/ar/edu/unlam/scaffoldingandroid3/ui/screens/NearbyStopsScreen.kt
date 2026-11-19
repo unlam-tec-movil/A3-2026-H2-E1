@@ -1,3 +1,4 @@
+
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
@@ -42,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,43 +57,66 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
+import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
+import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
 
 @Composable
 fun NearbyStopsScreen(
     viewModel: MapViewModel = hiltViewModel(),
     onNavigateToCompass: (BusStop) -> Unit = {},
+    favoriteViewModel: FavoriteBusStopsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
+    val favoriteIds by favoriteViewModel.favoriteStopIds.collectAsState()
 
-    var selectedTab by rememberSaveable { mutableStateOf(HomeTab.Map) }
-    var query by rememberSaveable { mutableStateOf("") }
+    var selectedTab by rememberSaveable {
+        mutableStateOf(HomeTab.Map)
+    }
+
+    var selectedFavorite by remember {
+        mutableStateOf<FavoriteStopSnapshot?>(null)
+    }
+
+    var query by rememberSaveable {
+        mutableStateOf("")
+    }
 
     val permissionLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { result ->
             viewModel.onPermissionResult(
-                fineGranted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true,
-                coarseGranted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true,
+                fineGranted =
+                    result[Manifest.permission.ACCESS_FINE_LOCATION] == true,
+                coarseGranted =
+                    result[Manifest.permission.ACCESS_COARSE_LOCATION] == true,
             )
         }
 
     fun resolveLocationPermission() {
         val fine =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+
         val coarse =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
 
         if (!fine && !coarse) {
             permissionLauncher.launch(
@@ -101,11 +126,15 @@ fun NearbyStopsScreen(
                 ),
             )
         } else {
-            viewModel.loadUserLocationAndStops(isApproximate = coarse && !fine)
+            viewModel.loadUserLocationAndStops(
+                isApproximate = coarse && !fine,
+            )
         }
     }
 
-    LaunchedEffect(Unit) { resolveLocationPermission() }
+    LaunchedEffect(Unit) {
+        resolveLocationPermission()
+    }
 
     Scaffold(
         topBar = {
@@ -115,7 +144,9 @@ fun NearbyStopsScreen(
                     query = it
                     viewModel.onSearchQueryChange(it)
                 },
-                onSearchSubmitted = { viewModel.submitSearch(it) },
+                onSearchSubmitted = {
+                    viewModel.submitSearch(it)
+                },
                 recentSearches = recentSearches,
                 showSearch = selectedTab == HomeTab.Map,
             )
@@ -123,7 +154,9 @@ fun NearbyStopsScreen(
         bottomBar = {
             HomeBottomBar(
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
+                onTabSelected = {
+                    selectedTab = it
+                },
             )
         },
     ) { padding ->
@@ -148,32 +181,46 @@ fun NearbyStopsScreen(
                                 title = "Permiso de ubicación rechazado",
                                 message = "Usamos tu ubicación para mostrarte las paradas más cercanas.",
                                 primaryLabel = "Permitir ubicación",
-                                onPrimary = { resolveLocationPermission() },
+                                onPrimary = {
+                                    resolveLocationPermission()
+                                },
                                 secondaryLabel = "Explorar el mapa manualmente",
-                                onSecondary = { viewModel.exploreManually() },
+                                onSecondary = {
+                                    viewModel.exploreManually()
+                                },
                             )
                         }
 
                         MapUiState.LocationDisabled -> {
                             MessageContent(
                                 title = "Ubicación desactivada",
-                                message = "Activá la ubicación del dispositivo para ver paradas cercanas.",
+                                message = "Activá la ubicación del dispositivo.",
                                 primaryLabel = "Abrir ajustes",
                                 onPrimary = {
-                                    context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                                    context.startActivity(
+                                        Intent(
+                                            Settings.ACTION_LOCATION_SOURCE_SETTINGS,
+                                        ),
+                                    )
                                 },
                                 secondaryLabel = "Reintentar",
-                                onSecondary = { resolveLocationPermission() },
+                                onSecondary = {
+                                    resolveLocationPermission()
+                                },
                             )
                         }
 
                         MapUiState.LocationUnavailable -> {
                             MessageContent(
-                                message = "No pudimos obtener tu ubicación. Intentá de nuevo.",
+                                message = "No pudimos obtener tu ubicación.",
                                 primaryLabel = "Reintentar",
-                                onPrimary = { resolveLocationPermission() },
-                                secondaryLabel = "Explorar el mapa manualmente",
-                                onSecondary = { viewModel.exploreManually() },
+                                onPrimary = {
+                                    resolveLocationPermission()
+                                },
+                                secondaryLabel = "Explorar manualmente",
+                                onSecondary = {
+                                    viewModel.exploreManually()
+                                },
                             )
                         }
 
@@ -182,26 +229,51 @@ fun NearbyStopsScreen(
                                 title = "Error de conexión",
                                 message = state.message,
                                 primaryLabel = "Reintentar",
-                                onPrimary = { resolveLocationPermission() },
+                                onPrimary = {
+                                    resolveLocationPermission()
+                                },
                             )
                         }
 
                         is MapUiState.Success -> {
                             NearbyStopsContent(
                                 state = state,
-                                onStopClick = { stop -> viewModel.selectBusStop(stop.stopId) },
+                                onStopClick = { stop ->
+                                    selectedFavorite = null
+                                    viewModel.selectBusStop(stop.stopId)
+                                },
                                 onOrientClick = onNavigateToCompass,
+                                favoriteIds = favoriteIds,
+                                onToggleFavorite = { stopId ->
+                                    val stop =
+                                        state.busStops.firstOrNull {
+                                            it.stopId == stopId
+                                        }
+
+                                    if (stop != null) {
+                                        favoriteViewModel.toggleFavorite(stop)
+                                    }
+                                },
+                                selectedFavorite = selectedFavorite,
                             )
                         }
                     }
                 }
 
                 HomeTab.Notices -> {
-                    EmptyTab(message = "No hay avisos cerca de vos.")
+                    EmptyTab(
+                        message = "Todavía no hay avisos de cortes o desvíos disponibles.",
+                    )
                 }
 
                 HomeTab.Favorites -> {
-                    EmptyTab(message = "Todavía no agregaste paradas favoritas.")
+                    FavoriteBusStopsScreen(
+                        onStopSelected = { stop ->
+                            selectedFavorite = stop
+                            viewModel.selectBusStop(stop.stopId)
+                            selectedTab = HomeTab.Map
+                        },
+                    )
                 }
             }
         }
@@ -222,30 +294,44 @@ private fun HomeHeader(
                 Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 12.dp,
+                    ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = "Voy en Bondi",
                 style = MaterialTheme.typography.headlineSmall,
             )
+
             if (showSearch) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = onQueryChange,
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(text = "Buscar parada o línea…") },
+                    placeholder = {
+                        Text("Buscar parada o línea…")
+                    },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Filled.Search, contentDescription = null)
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = null,
+                        )
                     },
                     singleLine = true,
-                    shape = MaterialTheme.shapes.medium,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardOptions =
+                        KeyboardOptions(
+                            imeAction = ImeAction.Search,
+                        ),
                     keyboardActions =
                         KeyboardActions(
-                            onSearch = { onSearchSubmitted(query) },
+                            onSearch = {
+                                onSearchSubmitted(query)
+                            },
                         ),
                 )
+
                 if (query.isBlank() && recentSearches.isNotEmpty()) {
                     SearchHistoryChips(
                         searches = recentSearches,
@@ -269,9 +355,18 @@ private fun HomeBottomBar(
         HomeTab.entries.forEach { tab ->
             NavigationBarItem(
                 selected = selectedTab == tab,
-                onClick = { onTabSelected(tab) },
-                icon = { Icon(imageVector = tab.icon, contentDescription = null) },
-                label = { Text(text = tab.label) },
+                onClick = {
+                    onTabSelected(tab)
+                },
+                icon = {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = null,
+                    )
+                },
+                label = {
+                    Text(tab.label)
+                },
             )
         }
     }
@@ -281,9 +376,18 @@ private enum class HomeTab(
     val label: String,
     val icon: ImageVector,
 ) {
-    Map(label = "Mapa", icon = Icons.Filled.Place),
-    Notices(label = "Avisos", icon = Icons.Filled.Notifications),
-    Favorites(label = "Favoritas", icon = Icons.Filled.Favorite),
+    Map(
+        label = "Mapa",
+        icon = Icons.Filled.Place,
+    ),
+    Notices(
+        label = "Avisos",
+        icon = Icons.Filled.Notifications,
+    ),
+    Favorites(
+        label = "Favoritas",
+        icon = Icons.Filled.Favorite,
+    ),
 }
 
 @Composable
@@ -291,10 +395,46 @@ private fun NearbyStopsContent(
     state: MapUiState.Success,
     onStopClick: (BusStop) -> Unit,
     onOrientClick: (BusStop) -> Unit,
+    favoriteIds: Set<Long>,
+    onToggleFavorite: (Long) -> Unit,
+    selectedFavorite: FavoriteStopSnapshot? = null,
 ) {
-    val selected = state.busStops.firstOrNull { it.stopId == state.selectedStopId }
+    val selected =
+        state.busStops.firstOrNull {
+            it.stopId == state.selectedStopId
+        }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    val favoriteStop =
+        selectedFavorite?.takeIf {
+            it.stopId == state.selectedStopId
+        }
+
+    val mapStops =
+        if (favoriteStop != null && selected == null) {
+            state.busStops +
+                BusStop(
+                    stopId = favoriteStop.stopId,
+                    name = favoriteStop.name,
+                    locationData =
+                        LocationData(
+                            latitude = Latitude(favoriteStop.latitude),
+                            longitude = Longitude(favoriteStop.longitude),
+                        ),
+                    markedAsFavorite = true,
+                    busLines = emptyList(),
+                )
+        } else {
+            state.busStops
+        }
+
+    val selectedForMap =
+        mapStops.firstOrNull {
+            it.stopId == state.selectedStopId
+        }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+    ) {
         if (state.isApproximate) {
             Surface(
                 color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -302,9 +442,7 @@ private fun NearbyStopsContent(
             ) {
                 Text(
                     text = "Ubicación aproximada. Las distancias pueden ser imprecisas.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(8.dp),
                     textAlign = TextAlign.Center,
                 )
             }
@@ -317,10 +455,7 @@ private fun NearbyStopsContent(
             ) {
                 Text(
                     text = "Sin conexión. Mostrando paradas guardadas en caché.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(8.dp),
                 )
             }
         }
@@ -332,18 +467,17 @@ private fun NearbyStopsContent(
             ) {
                 Text(
                     text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(8.dp),
                 )
             }
         }
 
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             OsmMapView(
                 userLocation = state.center,
-                stops = state.busStops,
+                stops = mapStops,
                 selectedStopId = state.selectedStopId,
                 onStopClick = onStopClick,
                 modifier =
@@ -351,7 +485,8 @@ private fun NearbyStopsContent(
                         .fillMaxWidth()
                         .height(260.dp),
             )
-            if (selected != null) {
+
+            if (selectedForMap != null) {
                 Surface(
                     modifier =
                         Modifier
@@ -361,19 +496,36 @@ private fun NearbyStopsContent(
                     tonalElevation = 3.dp,
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.End,
                     ) {
                         Text(
-                            text =
-                                selected.busLines.joinToString(" · ") { line ->
-                                    "Línea ${line.number}"
-                                },
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 4.dp),
+                            text = selectedForMap.name,
+                            style = MaterialTheme.typography.titleSmall,
                         )
-                        TextButton(onClick = { onOrientClick(selected) }) {
-                            Text(text = "Orientarme")
+
+                        val lines =
+                            if (
+                                favoriteStop != null &&
+                                selectedForMap.busLines.isEmpty()
+                            ) {
+                                favoriteStop.lines
+                            } else {
+                                selectedForMap.busLines.joinToString(" · ") {
+                                    "Línea ${it.number}"
+                                }
+                            }
+
+                        Text(
+                            text = lines,
+                        )
+
+                        TextButton(
+                            onClick = {
+                                onOrientClick(selectedForMap)
+                            },
+                        ) {
+                            Text("Orientarme")
                         }
                     }
                 }
@@ -383,38 +535,57 @@ private fun NearbyStopsContent(
         Text(
             text = "Paradas cerca de vos",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(16.dp),
         )
 
         when {
             state.busStops.isEmpty() -> {
                 Text(
                     text = "No hay paradas cerca de tu ubicación.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(16.dp),
                 )
             }
 
             state.filteredStops.isEmpty() -> {
                 Text(
                     text = "No encontramos paradas con esa búsqueda.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(16.dp),
                 )
             }
 
             else -> {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding =
+                        PaddingValues(
+                            horizontal = 16.dp,
+                            vertical = 4.dp,
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items = state.filteredStops, key = { it.stopId }) { stop ->
+                    items(
+                        items = state.filteredStops,
+                        key = {
+                            it.stopId
+                        },
+                    ) { stop ->
                         BusStopCard(
                             stop = stop,
-                            distanceMeters = state.center.distanceMetersTo(stop.locationData),
-                            selected = stop.stopId == state.selectedStopId,
-                            onClick = { onStopClick(stop) },
+                            distanceMeters =
+                                state.center.distanceMetersTo(
+                                    stop.locationData,
+                                ),
+                            selected =
+                                stop.stopId == state.selectedStopId,
+                            onClick = {
+                                onStopClick(stop)
+                            },
+                            isFavorite =
+                                stop.stopId in favoriteIds,
+                            onFavoriteClick = {
+                                onToggleFavorite(stop.stopId)
+                            },
                         )
                     }
                 }
@@ -434,7 +605,6 @@ private fun EmptyTab(message: String) {
     ) {
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
     }
@@ -460,8 +630,12 @@ private fun MessageContent(
     ) {
         if (showProgress) {
             CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(16.dp))
+
+            Spacer(
+                modifier = Modifier.height(16.dp),
+            )
         }
+
         if (title != null) {
             Text(
                 text = title,
@@ -469,23 +643,38 @@ private fun MessageContent(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
-            Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(
+                modifier = Modifier.height(8.dp),
+            )
         }
+
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
+
         if (primaryLabel != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onPrimary) {
-                Text(text = primaryLabel)
+            Spacer(
+                modifier = Modifier.height(16.dp),
+            )
+
+            Button(
+                onClick = onPrimary,
+            ) {
+                Text(primaryLabel)
             }
         }
+
         if (secondaryLabel != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(onClick = onSecondary) {
-                Text(text = secondaryLabel)
+            Spacer(
+                modifier = Modifier.height(8.dp),
+            )
+
+            OutlinedButton(
+                onClick = onSecondary,
+            ) {
+                Text(secondaryLabel)
             }
         }
     }
