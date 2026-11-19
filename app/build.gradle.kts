@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -10,20 +8,12 @@ plugins {
     alias(libs.plugins.kover)
 
     alias(libs.plugins.jetbrainsKotlinSerialization)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
     namespace = "ar.edu.unlam.scaffoldingandroid3"
     compileSdk = 37
-
-    // Credenciales de MongoDB Atlas: nunca se commitean (local.properties está en .gitignore).
-    val localProperties =
-        Properties().apply {
-            val localPropertiesFile = rootProject.file("local.properties")
-            if (localPropertiesFile.exists()) {
-                localPropertiesFile.inputStream().use { load(it) }
-            }
-        }
 
     defaultConfig {
         applicationId = "ar.edu.unlam.scaffoldingandroid3"
@@ -33,12 +23,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField(
-            "String",
-            "MONGODB_URI",
-            "\"${localProperties.getProperty("MONGODB_URI") ?: ""}\"",
-        )
     }
 
     buildTypes {
@@ -56,17 +40,10 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "/META-INF/native-image/native-image.properties"
-            excludes += "/META-INF/native-image/**"
-        }
     }
     testOptions {
         unitTests {
+            isIncludeAndroidResources = true
             isReturnDefaultValues = true
         }
     }
@@ -121,12 +98,15 @@ dependencies {
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
-    // mongo
-    implementation(libs.mongodb.driver.kotlin.coroutine)
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.geofire.android.common)
 
-    // Google Maps
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.maps)
+    // OpenStreetMap
+    implementation(libs.osmdroid.android)
+
+    // Location
     implementation(libs.play.services.location)
     implementation(libs.kotlinx.coroutines.play.services)
 
@@ -134,6 +114,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-    testImplementation(libs.turbine)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     implementation("androidx.compose.material:material-icons-extended")
 }

@@ -58,7 +58,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
-import ar.edu.unlam.scaffoldingandroid3.ui.components.GoogleMapView
+import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
@@ -341,7 +341,7 @@ private fun NearbyStopsContent(
         }
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            GoogleMapView(
+            OsmMapView(
                 userLocation = state.center,
                 stops = state.busStops,
                 selectedStopId = state.selectedStopId,
