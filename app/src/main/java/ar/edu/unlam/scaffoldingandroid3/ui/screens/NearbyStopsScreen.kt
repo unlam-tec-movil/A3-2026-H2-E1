@@ -34,6 +34,7 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +62,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -435,6 +439,19 @@ private fun NearbyStopsContent(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var userFocusTrigger by remember { mutableIntStateOf(0) }
+
+    val handleSearchSubmitted: (String) -> Unit = { submittedQuery ->
+        onSearchSubmitted(submittedQuery)
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        coroutineScope.launch {
+            scaffoldState.bottomSheetState.expand()
+        }
+    }
+
     val selected =
         state.busStops.firstOrNull {
             it.stopId == state.selectedStopId
@@ -447,7 +464,7 @@ private fun NearbyStopsContent(
 
     val mapStops =
         if (favoriteStop != null && selected == null) {
-            state.busStops +
+            state.filteredStops +
                 BusStop(
                     stopId = favoriteStop.stopId,
                     name = favoriteStop.name,
@@ -460,7 +477,7 @@ private fun NearbyStopsContent(
                     busLines = emptyList(),
                 )
         } else {
-            state.busStops
+            state.filteredStops
         }
 
     LaunchedEffect(state.selectedStopId) {
@@ -636,6 +653,8 @@ private fun NearbyStopsContent(
                 userLocation = state.center,
                 stops = mapStops,
                 selectedStopId = state.selectedStopId,
+                selectedClusterStopIds = state.clusterFilterStopIds,
+                userFocusTrigger = userFocusTrigger,
                 onStopClick = { stop ->
                     onStopClick(stop)
                     coroutineScope.launch {
@@ -651,12 +670,37 @@ private fun NearbyStopsContent(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            HomeHeader(
-                query = query,
-                onQueryChange = onQueryChange,
-                onSearchSubmitted = onSearchSubmitted,
-                recentSearches = recentSearches,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+            ) {
+                HomeHeader(
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onSearchSubmitted = handleSearchSubmitted,
+                    recentSearches = recentSearches,
+                )
+
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(end = 16.dp, top = 12.dp),
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            userFocusTrigger++
+                        },
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Place,
+                            contentDescription = "Centrar en mi ubicación",
+                        )
+                    }
+                }
+            }
         }
     }
 }

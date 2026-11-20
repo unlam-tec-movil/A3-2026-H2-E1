@@ -9,11 +9,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -21,12 +16,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -47,6 +40,8 @@ import org.osmdroid.views.overlay.Polygon
 import android.graphics.Color as AndroidColor
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
+private val SELECTED_CLUSTER_COLOR = AndroidColor.parseColor("#FF9800")
+
 @Composable
 fun OsmMapView(
     userLocation: LocationData,
@@ -54,14 +49,17 @@ fun OsmMapView(
     selectedStopId: Long?,
     onStopClick: (BusStop) -> Unit,
     modifier: Modifier = Modifier,
+    selectedClusterStopIds: Set<Long>? = null,
     onClusterClick: (List<BusStop>) -> Unit = {},
     focusTrigger: Int = 0,
+    userFocusTrigger: Int = 0,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val currentStops by rememberUpdatedState(stops)
     val currentSelectedStopId by rememberUpdatedState(selectedStopId)
+    val currentSelectedClusterStopIds by rememberUpdatedState(selectedClusterStopIds)
     val currentUserLocation by rememberUpdatedState(userLocation)
     val currentOnStopClick by rememberUpdatedState(onStopClick)
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
@@ -96,11 +94,19 @@ fun OsmMapView(
             }
         }
 
-    val clusterDrawablesCache = remember(context, primaryColor) { mutableMapOf<Int, Drawable>() }
+    val normalClusterCache = remember(context, primaryColor) { mutableMapOf<Int, Drawable>() }
+    val selectedClusterCache = remember(context) { mutableMapOf<Int, Drawable>() }
 
-    fun getClusterDrawable(count: Int): Drawable =
-        clusterDrawablesCache.getOrPut(count) {
-            createClusterBitmap(context, count, primaryColor)
+    fun getClusterDrawable(
+        count: Int,
+        isSelected: Boolean,
+    ): Drawable =
+        (if (isSelected) selectedClusterCache else normalClusterCache).getOrPut(count) {
+            createClusterBitmap(
+                context = context,
+                count = count,
+                backgroundColor = if (isSelected) SELECTED_CLUSTER_COLOR else primaryColor,
+            )
         }
 
     val mapView =
@@ -186,11 +192,16 @@ fun OsmMapView(
 
                 is ClusterItem.Group -> {
                     val clusterPoint = OsmGeoPoint(item.centerLat, item.centerLon)
+                    val selectedIds = currentSelectedClusterStopIds
+                    val isClusterSelected =
+                        selectedIds != null &&
+                            item.stops.any { it.stopId in selectedIds }
+
                     val clusterMarker =
                         Marker(map).apply {
                             position = clusterPoint
                             title = "Grupo de ${item.stops.size} paradas"
-                            icon = getClusterDrawable(item.stops.size)
+                            icon = getClusterDrawable(item.stops.size, isClusterSelected)
                             infoWindow = null
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                             setOnMarkerClickListener { _, _ ->
@@ -226,8 +237,15 @@ fun OsmMapView(
             val selectedStop = stops.firstOrNull { it.stopId == selectedStopId }
             if (selectedStop != null) {
                 val stopOsmPoint = OsmGeoPoint(selectedStop.locationData.latitude.value, selectedStop.locationData.longitude.value)
-                mapView.controller.animateTo(stopOsmPoint, 17.5, 1000L)
+                mapView.controller.animateTo(stopOsmPoint, 18.5, 1000L)
             }
+        }
+    }
+
+    LaunchedEffect(userFocusTrigger) {
+        if (userFocusTrigger > 0) {
+            val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
+            mapView.controller.animateTo(userOsmPoint, 17.0, 1000L)
         }
     }
 
@@ -266,25 +284,6 @@ fun OsmMapView(
                 refreshOverlays(map)
             },
         )
-
-        // Botón Flotante (FAB) ubicado a la derecha justo debajo de la barra de búsqueda
-        FloatingActionButton(
-            onClick = {
-                val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
-                mapView.controller.animateTo(userOsmPoint, 17.0, 1000L)
-            },
-            modifier =
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 170.dp, end = 16.dp),
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Place,
-                contentDescription = "Centrar en mi ubicación",
-            )
-        }
     }
 }
 

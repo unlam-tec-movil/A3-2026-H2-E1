@@ -23,8 +23,24 @@ class BusStopMapperTest {
                 markedAsFavorite = true,
                 busLines =
                     listOf(
-                        BusLine(lineId = 96L, number = 96, routes = emptyList(), currentStatus = BusLineStatus.NORMAL),
-                        BusLine(lineId = 185L, number = 185, routes = emptyList(), currentStatus = BusLineStatus.NORMAL),
+                        BusLine(
+                            lineId = 96L,
+                            number = 96,
+                            routes = emptyList(),
+                            currentStatus = BusLineStatus.NORMAL,
+                            code = "96A",
+                            branch = "A",
+                            destination = "Plaza Once",
+                        ),
+                        BusLine(
+                            lineId = 185L,
+                            number = 185,
+                            routes = emptyList(),
+                            currentStatus = BusLineStatus.NORMAL,
+                            code = "185",
+                            branch = "",
+                            destination = "Liniers",
+                        ),
                     ),
                 status = StopStatus.EN_OBRAS,
             )
@@ -40,7 +56,10 @@ class BusStopMapperTest {
         assertEquals(original.status, restored.status)
         assertEquals(original.busLines.size, restored.busLines.size)
         assertEquals(original.busLines[0].number, restored.busLines[0].number)
+        assertEquals(original.busLines[0].branch, restored.busLines[0].branch)
+        assertEquals(original.busLines[0].destination, restored.busLines[0].destination)
         assertEquals(original.busLines[1].number, restored.busLines[1].number)
+        assertEquals(original.busLines[1].destination, restored.busLines[1].destination)
     }
 
     @Test

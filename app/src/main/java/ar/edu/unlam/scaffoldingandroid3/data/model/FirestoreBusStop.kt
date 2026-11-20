@@ -11,5 +11,7 @@ data class FirestoreBusStop(
 
 data class FirestoreBusLine(
     val code: String = "",
+    val ramal: String? = null,
+    val branch: String? = null,
     val destination: String? = null,
 )
