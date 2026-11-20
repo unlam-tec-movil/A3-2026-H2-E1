@@ -15,7 +15,11 @@ class FirestoreBusStopMapperTest {
         val firestoreStop =
             FirestoreBusStop(
                 name = "1524 DEFENSA",
-                lines = listOf(FirestoreBusLine(code = "22"), FirestoreBusLine(code = "10A")),
+                lines =
+                    listOf(
+                        FirestoreBusLine(code = "22", destination = "I"),
+                        FirestoreBusLine(code = "10A", destination = "V"),
+                    ),
                 location = FirestoreGeoPoint(-34.62567626, -58.37100073),
                 geohash = "69y7p8xdc4",
             )
@@ -27,6 +31,12 @@ class FirestoreBusStopMapperTest {
         assertEquals(-34.62567626, stop.locationData.latitude.value, 0.00001)
         assertEquals(-58.37100073, stop.locationData.longitude.value, 0.00001)
         assertEquals(listOf(22, 10), stop.busLines.map { it.number })
+        assertEquals("22", stop.busLines[0].code)
+        assertEquals("", stop.busLines[0].branch)
+        assertEquals("Ida", stop.busLines[0].destination)
+        assertEquals("10A", stop.busLines[1].code)
+        assertEquals("A", stop.busLines[1].branch)
+        assertEquals("Vuelta", stop.busLines[1].destination)
     }
 
     @Test

@@ -30,11 +30,37 @@ object FirestoreBusStopMapper {
 
     fun FirestoreBusLine.toDomain(): BusLine {
         val lineCode = code.trim().ifBlank { "-" }
+        val lineNumber = lineCode.toLineNumber()
+        val digits = lineNumber.toString()
+        val extractedBranch =
+            if (lineCode.startsWith(digits) && lineCode.length > digits.length) {
+                lineCode.removePrefix(digits).trim()
+            } else {
+                ""
+            }
+        val finalBranch =
+            ramal?.trim()?.ifBlank { null }
+                ?: branch?.trim()?.ifBlank { null }
+                ?: extractedBranch
+
+        val dest = destination?.trim() ?: ""
+        val formattedDestination =
+            when (dest.uppercase()) {
+                "I" -> "Ida"
+                "V" -> "Vuelta"
+                else -> if (dest.isNotBlank()) dest else ""
+            }
+
+        val stableLineKey = "$lineCode-$finalBranch-$formattedDestination"
+
         return BusLine(
-            lineId = lineCode.toStableLong(),
-            number = lineCode.toLineNumber(),
+            lineId = stableLineKey.toStableLong(),
+            number = lineNumber,
             routes = emptyList(),
             currentStatus = BusLineStatus.NORMAL,
+            code = lineCode,
+            branch = finalBranch,
+            destination = formattedDestination,
         )
     }
 }

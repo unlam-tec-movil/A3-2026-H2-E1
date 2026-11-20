@@ -323,4 +323,80 @@ class MapExploreViewModelTest {
 
             coVerify(exactly = 1) { busStopRepository.saveSearchQuery("96") }
         }
+
+    @Test
+    @DisplayName("Debería filtrar paradas por cluster y luego restablecer al limpiar el filtro")
+    fun shouldFilterByClusterAndRestoreWhenCleared() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+
+            coEvery { repository.isLocationEnabled() } returns true
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns
+                NearbyStopsResult(stops = expectedStops, origin = NearbyStopsOrigin.REMOTE)
+
+            viewModel = createViewModel()
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+
+                viewModel.loadUserLocationAndStops()
+
+                val initialSuccess = awaitItem() as MapUiState.Success
+                assertEquals(expectedStops.size, initialSuccess.filteredStops.size)
+                assertNull(initialSuccess.clusterFilterStopIds)
+
+                val targetStopId = expectedStops.first().stopId
+                viewModel.filterByCluster(setOf(targetStopId))
+
+                val clusterFiltered = awaitItem() as MapUiState.Success
+                assertEquals(1, clusterFiltered.filteredStops.size)
+                assertEquals(targetStopId, clusterFiltered.filteredStops.first().stopId)
+                assertEquals(setOf(targetStopId), clusterFiltered.clusterFilterStopIds)
+
+                viewModel.clearClusterFilter()
+
+                val restoredSuccess = awaitItem() as MapUiState.Success
+                assertEquals(expectedStops.size, restoredSuccess.filteredStops.size)
+                assertNull(restoredSuccess.clusterFilterStopIds)
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería limpiar el filtro de cluster al cambiar la consulta de búsqueda")
+    fun shouldClearClusterFilterWhenSearchQueryChanges() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+
+            coEvery { repository.isLocationEnabled() } returns true
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns
+                NearbyStopsResult(stops = expectedStops, origin = NearbyStopsOrigin.REMOTE)
+
+            viewModel = createViewModel()
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+
+                viewModel.loadUserLocationAndStops()
+                awaitItem() as MapUiState.Success
+
+                val targetStopId = expectedStops.first().stopId
+                viewModel.filterByCluster(setOf(targetStopId))
+
+                val clusterFiltered = awaitItem() as MapUiState.Success
+                assertEquals(setOf(targetStopId), clusterFiltered.clusterFilterStopIds)
+
+                viewModel.onSearchQueryChange("Centro")
+
+                val queryFiltered = awaitItem() as MapUiState.Success
+                assertNull(queryFiltered.clusterFilterStopIds)
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 }

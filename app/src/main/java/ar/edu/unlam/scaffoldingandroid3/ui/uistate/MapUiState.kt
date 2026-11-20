@@ -21,6 +21,7 @@ sealed interface MapUiState {
         val busStops: List<BusStop>,
         val filteredStops: List<BusStop> = busStops,
         val selectedStopId: Long? = null,
+        val clusterFilterStopIds: Set<Long>? = null,
         val isApproximate: Boolean = false,
         val isFromCache: Boolean = false,
         val isDemo: Boolean = false,

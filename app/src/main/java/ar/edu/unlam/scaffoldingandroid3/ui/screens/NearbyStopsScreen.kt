@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,7 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +63,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -251,6 +256,13 @@ fun NearbyStopsScreen(
                                     selectedFavorite = null
                                     viewModel.selectBusStop(stop.stopId)
                                 },
+                                onClusterClick = { clusterStops ->
+                                    selectedFavorite = null
+                                    viewModel.filterByCluster(clusterStops.map { it.stopId }.toSet())
+                                },
+                                onClearClusterFilter = {
+                                    viewModel.clearClusterFilter()
+                                },
                                 onOrientClick = onNavigateToCompass,
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
@@ -425,6 +437,8 @@ private fun NearbyStopsContent(
     onOrientClick: (BusStop) -> Unit,
     favoriteIds: Set<Long>,
     onToggleFavorite: (Long) -> Unit,
+    onClusterClick: (List<BusStop>) -> Unit = {},
+    onClearClusterFilter: () -> Unit = {},
     selectedFavorite: FavoriteStopSnapshot? = null,
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -432,6 +446,19 @@ private fun NearbyStopsContent(
     val listState = rememberLazyListState()
     val photoReportViewModel: PhotoReportViewModel = hiltViewModel()
     val photoReportState by photoReportViewModel.uiState.collectAsState()
+
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var userFocusTrigger by remember { mutableIntStateOf(0) }
+
+    val handleSearchSubmitted: (String) -> Unit = { submittedQuery ->
+        onSearchSubmitted(submittedQuery)
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        coroutineScope.launch {
+            scaffoldState.bottomSheetState.expand()
+        }
+    }
 
     val selected =
         state.busStops.firstOrNull {
@@ -445,7 +472,7 @@ private fun NearbyStopsContent(
 
     val mapStops =
         if (favoriteStop != null && selected == null) {
-            state.busStops +
+            state.filteredStops +
                 BusStop(
                     stopId = favoriteStop.stopId,
                     name = favoriteStop.name,
@@ -458,7 +485,7 @@ private fun NearbyStopsContent(
                     busLines = emptyList(),
                 )
         } else {
-            state.busStops
+            state.filteredStops
         }
 
     val selectedForReport =
@@ -562,6 +589,44 @@ private fun NearbyStopsContent(
                         }
                     }
 
+                    if (state.clusterFilterStopIds != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.small,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                        ) {
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "Grupo de ${state.filteredStops.size} paradas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    onClick = onClearClusterFilter,
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Quitar filtro de grupo",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     when {
                         state.busStops.isEmpty() -> {
                             Text(
@@ -630,8 +695,16 @@ private fun NearbyStopsContent(
                 userLocation = state.center,
                 stops = mapStops,
                 selectedStopId = state.selectedStopId,
+                selectedClusterStopIds = state.clusterFilterStopIds,
+                userFocusTrigger = userFocusTrigger,
                 onStopClick = { stop ->
                     onStopClick(stop)
+                    coroutineScope.launch {
+                        scaffoldState.bottomSheetState.expand()
+                    }
+                },
+                onClusterClick = { clusterStops ->
+                    onClusterClick(clusterStops)
                     coroutineScope.launch {
                         scaffoldState.bottomSheetState.expand()
                     }
@@ -639,12 +712,37 @@ private fun NearbyStopsContent(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            HomeHeader(
-                query = query,
-                onQueryChange = onQueryChange,
-                onSearchSubmitted = onSearchSubmitted,
-                recentSearches = recentSearches,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+            ) {
+                HomeHeader(
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onSearchSubmitted = handleSearchSubmitted,
+                    recentSearches = recentSearches,
+                )
+
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(end = 16.dp, top = 12.dp),
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            userFocusTrigger++
+                        },
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Place,
+                            contentDescription = "Centrar en mi ubicación",
+                        )
+                    }
+                }
+            }
         }
     }
 

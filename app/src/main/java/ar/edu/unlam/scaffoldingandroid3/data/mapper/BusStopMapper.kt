@@ -19,6 +19,9 @@ object BusStopMapper {
     private data class CachedBusLine(
         val lineId: Long,
         val number: Int,
+        val code: String = "",
+        val branch: String = "",
+        val destination: String = "",
     )
 
     private val jsonFormat = Json { ignoreUnknownKeys = true }
@@ -36,8 +39,11 @@ object BusStopMapper {
                     jsonFormat.encodeToString(
                         busLines.map {
                             CachedBusLine(
-                                it.lineId,
-                                it.number,
+                                lineId = it.lineId,
+                                number = it.number,
+                                code = it.code,
+                                branch = it.branch,
+                                destination = it.destination,
                             )
                         },
                     )
@@ -66,6 +72,9 @@ object BusStopMapper {
                             number = cached.number,
                             routes = emptyList(),
                             currentStatus = BusLineStatus.NORMAL,
+                            code = cached.code.ifBlank { cached.number.toString() },
+                            branch = cached.branch,
+                            destination = cached.destination,
                         )
                     }
                 },
