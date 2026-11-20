@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -246,6 +248,13 @@ fun NearbyStopsScreen(
                                     selectedFavorite = null
                                     viewModel.selectBusStop(stop.stopId)
                                 },
+                                onClusterClick = { clusterStops ->
+                                    selectedFavorite = null
+                                    viewModel.filterByCluster(clusterStops.map { it.stopId }.toSet())
+                                },
+                                onClearClusterFilter = {
+                                    viewModel.clearClusterFilter()
+                                },
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
                                     val stop =
@@ -418,6 +427,8 @@ private fun NearbyStopsContent(
     onStopClick: (BusStop) -> Unit,
     favoriteIds: Set<Long>,
     onToggleFavorite: (Long) -> Unit,
+    onClusterClick: (List<BusStop>) -> Unit = {},
+    onClearClusterFilter: () -> Unit = {},
     selectedFavorite: FavoriteStopSnapshot? = null,
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -519,6 +530,44 @@ private fun NearbyStopsContent(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
 
+                    if (state.clusterFilterStopIds != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.small,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                        ) {
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "Grupo de ${state.filteredStops.size} paradas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    onClick = onClearClusterFilter,
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Quitar filtro de grupo",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     when {
                         state.busStops.isEmpty() -> {
                             Text(
@@ -589,6 +638,12 @@ private fun NearbyStopsContent(
                 selectedStopId = state.selectedStopId,
                 onStopClick = { stop ->
                     onStopClick(stop)
+                    coroutineScope.launch {
+                        scaffoldState.bottomSheetState.expand()
+                    }
+                },
+                onClusterClick = { clusterStops ->
+                    onClusterClick(clusterStops)
                     coroutineScope.launch {
                         scaffoldState.bottomSheetState.expand()
                     }

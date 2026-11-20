@@ -65,6 +65,7 @@ class MapViewModel
                 )
 
         private var currentQuery = ""
+        private var clusterFilterStopIds: Set<Long>? = null
 
         /**
          * Registra el resultado del pedido de permisos y, si hubo alguno otorgado, arranca
@@ -128,8 +129,38 @@ class MapViewModel
         /** Filtra las paradas del estado actual mientras el pasajero escribe. */
         fun onSearchQueryChange(query: String) {
             currentQuery = query
+            clusterFilterStopIds = null
             val current = _uiState.value as? MapUiState.Success ?: return
-            _uiState.value = current.copy(filteredStops = filterBusStops(current.busStops, query))
+            _uiState.value =
+                current.copy(
+                    clusterFilterStopIds = null,
+                    filteredStops = filterBusStops(current.busStops, query),
+                )
+        }
+
+        /** Filtra las paradas de la lista para mostrar únicamente las pertenecientes al cluster seleccionado. */
+        fun filterByCluster(stopIds: Set<Long>) {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            clusterFilterStopIds = stopIds
+            val baseStops = filterBusStops(current.busStops, currentQuery)
+            val clusteredStops = baseStops.filter { it.stopId in stopIds }
+            _uiState.value =
+                current.copy(
+                    clusterFilterStopIds = stopIds,
+                    filteredStops = clusteredStops,
+                )
+        }
+
+        /** Restablece el filtrado por cluster volviendo a mostrar las paradas de la búsqueda actual. */
+        fun clearClusterFilter() {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            clusterFilterStopIds = null
+            val baseStops = filterBusStops(current.busStops, currentQuery)
+            _uiState.value =
+                current.copy(
+                    clusterFilterStopIds = null,
+                    filteredStops = baseStops,
+                )
         }
 
         /** Persiste una búsqueda enviada en el historial (Enter o chip de historial). */
@@ -154,11 +185,18 @@ class MapViewModel
             result: NearbyStopsResult,
             isApproximate: Boolean,
         ) {
+            val baseStops = filterBusStops(result.stops, currentQuery)
+            val finalStops =
+                clusterFilterStopIds?.let { ids ->
+                    baseStops.filter { it.stopId in ids }
+                } ?: baseStops
+
             _uiState.value =
                 MapUiState.Success(
                     center = center,
                     busStops = result.stops,
-                    filteredStops = filterBusStops(result.stops, currentQuery),
+                    filteredStops = finalStops,
+                    clusterFilterStopIds = clusterFilterStopIds,
                     isApproximate = isApproximate,
                     isFromCache = result.origin == NearbyStopsOrigin.CACHE,
                     isDemo = result.origin == NearbyStopsOrigin.DEMO,
