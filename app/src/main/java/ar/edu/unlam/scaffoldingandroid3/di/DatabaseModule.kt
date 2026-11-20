@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.AppDatabase
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.dao.BusStopCacheDao
+import ar.edu.unlam.scaffoldingandroid3.data.database.room.dao.PhotoReportDao
 import ar.edu.unlam.scaffoldingandroid3.data.database.room.dao.SearchHistoryDao
 import dagger.Module
 import dagger.Provides
@@ -35,4 +36,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideSearchHistoryDao(database: AppDatabase): SearchHistoryDao = database.searchHistoryDao()
+
+    @Provides
+    @Singleton
+    fun providePhotoReportDao(database: AppDatabase): PhotoReportDao = database.photoReportDao()
 }

@@ -45,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,10 +80,13 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
+import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
+import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
+import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.PhotoReportViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -259,6 +263,7 @@ fun NearbyStopsScreen(
                                 onClearClusterFilter = {
                                     viewModel.clearClusterFilter()
                                 },
+                                onOrientClick = onNavigateToCompass,
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
                                     val stop =
@@ -429,6 +434,7 @@ private fun NearbyStopsContent(
     onSearchSubmitted: (String) -> Unit,
     recentSearches: List<SearchHistory>,
     onStopClick: (BusStop) -> Unit,
+    onOrientClick: (BusStop) -> Unit,
     favoriteIds: Set<Long>,
     onToggleFavorite: (Long) -> Unit,
     onClusterClick: (List<BusStop>) -> Unit = {},
@@ -438,6 +444,8 @@ private fun NearbyStopsContent(
     val scaffoldState = rememberBottomSheetScaffoldState()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val photoReportViewModel: PhotoReportViewModel = hiltViewModel()
+    val photoReportState by photoReportViewModel.uiState.collectAsState()
 
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -478,6 +486,11 @@ private fun NearbyStopsContent(
                 )
         } else {
             state.filteredStops
+        }
+
+    val selectedForReport =
+        mapStops.firstOrNull {
+            it.stopId == state.selectedStopId
         }
 
     LaunchedEffect(state.selectedStopId) {
@@ -541,11 +554,40 @@ private fun NearbyStopsContent(
                         }
                     }
 
-                    Text(
-                        text = "Paradas cerca de vos",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Paradas cerca de vos",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        if (selectedForReport != null) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        onOrientClick(selectedForReport)
+                                    },
+                                ) {
+                                    Text("Orientarme")
+                                }
+
+                                PhotoReportCameraButton(
+                                    stopId = selectedForReport.stopId,
+                                    onPhotoTaken = photoReportViewModel::onPhotoTaken,
+                                    onPermissionDenied = photoReportViewModel::onPermissionDenied,
+                                    onCancelled = photoReportViewModel::onCancelled,
+                                )
+                            }
+                        }
+                    }
 
                     if (state.clusterFilterStopIds != null) {
                         Surface(
@@ -703,6 +745,13 @@ private fun NearbyStopsContent(
             }
         }
     }
+
+    PhotoReportDialogs(
+        state = photoReportState,
+        onConfirm = photoReportViewModel::saveReport,
+        onDismiss = photoReportViewModel::onCancelled,
+        onAcknowledge = photoReportViewModel::onAcknowledged,
+    )
 }
 
 @Composable
