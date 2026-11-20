@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,10 +74,13 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
+import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
+import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
+import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.PhotoReportViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -423,6 +427,8 @@ private fun NearbyStopsContent(
     val scaffoldState = rememberBottomSheetScaffoldState()
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val photoReportViewModel: PhotoReportViewModel = hiltViewModel()
+    val photoReportState by photoReportViewModel.uiState.collectAsState()
 
     val selected =
         state.busStops.firstOrNull {
@@ -450,6 +456,11 @@ private fun NearbyStopsContent(
                 )
         } else {
             state.busStops
+        }
+
+    val selectedForReport =
+        mapStops.firstOrNull {
+            it.stopId == state.selectedStopId
         }
 
     LaunchedEffect(state.selectedStopId) {
@@ -513,11 +524,27 @@ private fun NearbyStopsContent(
                         }
                     }
 
-                    Text(
-                        text = "Paradas cerca de vos",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Paradas cerca de vos",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        if (selectedForReport != null) {
+                            PhotoReportCameraButton(
+                                stopId = selectedForReport.stopId,
+                                onPhotoTaken = photoReportViewModel::onPhotoTaken,
+                                onPermissionDenied = photoReportViewModel::onPermissionDenied,
+                                onCancelled = photoReportViewModel::onCancelled,
+                            )
+                        }
+                    }
 
                     when {
                         state.busStops.isEmpty() -> {
@@ -604,6 +631,13 @@ private fun NearbyStopsContent(
             )
         }
     }
+
+    PhotoReportDialogs(
+        state = photoReportState,
+        onConfirm = photoReportViewModel::saveReport,
+        onDismiss = photoReportViewModel::onCancelled,
+        onAcknowledge = photoReportViewModel::onAcknowledged,
+    )
 }
 
 @Composable
