@@ -65,7 +65,6 @@ class BusStopClustererTest {
         val stop1 = createStop(1L, -34.6700, -58.5600)
         val stop2 = createStop(2L, -34.6800, -58.5700)
 
-        // Distancia en pantalla: (100, 100) y (300, 300) > 50px
         val result =
             clusterBusStops(
                 stops = listOf(stop1, stop2),
@@ -90,7 +89,6 @@ class BusStopClustererTest {
         val stop2 = createStop(2L, -34.6702, -58.5602)
         val stop3 = createStop(3L, -34.6704, -58.5604)
 
-        // Puntos proyectados a 10px de distancia mutua (< 50px)
         val result =
             clusterBusStops(
                 stops = listOf(stop1, stop2, stop3),
@@ -116,7 +114,7 @@ class BusStopClustererTest {
     fun shouldHandleMixedClusteredAndSingleStops() {
         val stop1 = createStop(1L, -34.6700, -58.5600)
         val stop2 = createStop(2L, -34.6701, -58.5601)
-        val stop3 = createStop(3L, -34.6900, -58.5900) // Lejana
+        val stop3 = createStop(3L, -34.6900, -58.5900)
 
         val result =
             clusterBusStops(
@@ -124,8 +122,8 @@ class BusStopClustererTest {
                 toScreenPixels = { lat, _ ->
                     when (lat) {
                         stop1.locationData.latitude.value -> ScreenPoint(100f, 100f)
-                        stop2.locationData.latitude.value -> ScreenPoint(110f, 100f) // a 10px de stop1
-                        else -> ScreenPoint(500f, 500f) // a 400px
+                        stop2.locationData.latitude.value -> ScreenPoint(110f, 100f)
+                        else -> ScreenPoint(500f, 500f)
                     }
                 },
                 radiusPixels = 50f,
@@ -139,5 +137,23 @@ class BusStopClustererTest {
         assertEquals(2, groups.first().stops.size)
         assertEquals(1, singles.size)
         assertEquals(stop3.stopId, singles.first().stop.stopId)
+    }
+
+    @Test
+    @DisplayName("Debería mantener la parada seleccionada como Single independientemente de la cercanía")
+    fun shouldKeepSelectedStopAsSingleEvenIfCloseToOthers() {
+        val stop1 = createStop(1L, -34.6700, -58.5600)
+        val stop2 = createStop(2L, -34.6701, -58.5601)
+
+        val result =
+            clusterBusStops(
+                stops = listOf(stop1, stop2),
+                toScreenPixels = { _, _ -> ScreenPoint(100f, 100f) },
+                radiusPixels = 50f,
+                selectedStopId = 1L,
+            )
+
+        val singles = result.filterIsInstance<ClusterItem.Single>()
+        assertTrue(singles.any { it.stop.stopId == 1L })
     }
 }

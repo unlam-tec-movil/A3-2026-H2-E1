@@ -147,7 +147,7 @@ fun OsmMapView(
             }
         map.overlays.add(userMarker)
 
-        // Proyección y clustering de paradas
+        // Proyección y clustering de paradas (eximiendo la parada seleccionada)
         val tempPoint = Point()
         val density = context.resources.displayMetrics.density
         val radiusPx = 60f * density
@@ -166,6 +166,7 @@ fun OsmMapView(
                     }
                 },
                 radiusPixels = radiusPx,
+                selectedStopId = currentSelectedStopId,
             )
 
         clusterItems.forEach { item ->
@@ -237,7 +238,7 @@ fun OsmMapView(
             val selectedStop = stops.firstOrNull { it.stopId == selectedStopId }
             if (selectedStop != null) {
                 val stopOsmPoint = OsmGeoPoint(selectedStop.locationData.latitude.value, selectedStop.locationData.longitude.value)
-                mapView.controller.animateTo(stopOsmPoint, 18.5, 1000L)
+                mapView.controller.animateTo(stopOsmPoint, 19.5, 1000L)
             }
         }
     }

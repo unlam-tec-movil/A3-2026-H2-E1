@@ -32,44 +32,61 @@ sealed interface ClusterItem {
 
 /**
  * Agrupa una lista de paradas por cercanía en coordenadas proyectadas de pantalla.
+ * Las paradas seleccionadas (`selectedStopId`) se eximen del agrupamiento para ser
+ * representadas siempre como marcadores individuales.
  *
  * @param stops Lista de paradas a evaluar.
  * @param toScreenPixels Función que proyecta coordenadas geográficas (lat, lon) a [ScreenPoint] en píxeles.
  * @param radiusPixels Radio máximo de proximidad en píxeles para agrupar paradas en un mismo cluster.
+ * @param selectedStopId ID opcional de la parada seleccionada a mantener desacoplada del cluster.
  * @return Lista de [ClusterItem] conteniendo elementos individuales o agrupados.
  */
 fun clusterBusStops(
     stops: List<BusStop>,
     toScreenPixels: (Double, Double) -> ScreenPoint,
     radiusPixels: Float = 70f,
+    selectedStopId: Long? = null,
 ): List<ClusterItem> {
     if (stops.isEmpty()) return emptyList()
 
-    val visited = BooleanArray(stops.size)
+    val (selectedStops, unselectedStops) =
+        if (selectedStopId != null) {
+            stops.partition { it.stopId == selectedStopId }
+        } else {
+            Pair(emptyList(), stops)
+        }
+
+    val result = mutableListOf<ClusterItem>()
+
+    selectedStops.forEach { selected ->
+        result.add(ClusterItem.Single(selected))
+    }
+
+    if (unselectedStops.isEmpty()) return result
+
+    val visited = BooleanArray(unselectedStops.size)
     val screenPoints =
-        stops.map { stop ->
+        unselectedStops.map { stop ->
             toScreenPixels(
                 stop.locationData.latitude.value,
                 stop.locationData.longitude.value,
             )
         }
 
-    val result = mutableListOf<ClusterItem>()
-
-    for (i in stops.indices) {
+    for (i in unselectedStops.indices) {
         if (visited[i]) continue
         visited[i] = true
 
-        val clusterMembers = mutableListOf(stops[i])
+        val clusterMembers = mutableListOf(unselectedStops[i])
         val p1 = screenPoints[i]
 
-        for (j in i + 1 until stops.size) {
+        for (j in i + 1 until unselectedStops.size) {
             if (visited[j]) continue
             val p2 = screenPoints[j]
             val distance = hypot(p1.x - p2.x, p1.y - p2.y)
             if (distance <= radiusPixels) {
                 visited[j] = true
-                clusterMembers.add(stops[j])
+                clusterMembers.add(unselectedStops[j])
             }
         }
 
