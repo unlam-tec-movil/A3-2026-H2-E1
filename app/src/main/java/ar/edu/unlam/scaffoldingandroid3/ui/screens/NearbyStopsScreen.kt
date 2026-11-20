@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -250,6 +251,7 @@ fun NearbyStopsScreen(
                                     selectedFavorite = null
                                     viewModel.selectBusStop(stop.stopId)
                                 },
+                                onOrientClick = onNavigateToCompass,
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
                                     val stop =
@@ -420,6 +422,7 @@ private fun NearbyStopsContent(
     onSearchSubmitted: (String) -> Unit,
     recentSearches: List<SearchHistory>,
     onStopClick: (BusStop) -> Unit,
+    onOrientClick: (BusStop) -> Unit,
     favoriteIds: Set<Long>,
     onToggleFavorite: (Long) -> Unit,
     selectedFavorite: FavoriteStopSnapshot? = null,
@@ -537,12 +540,25 @@ private fun NearbyStopsContent(
                             style = MaterialTheme.typography.titleMedium,
                         )
                         if (selectedForReport != null) {
-                            PhotoReportCameraButton(
-                                stopId = selectedForReport.stopId,
-                                onPhotoTaken = photoReportViewModel::onPhotoTaken,
-                                onPermissionDenied = photoReportViewModel::onPermissionDenied,
-                                onCancelled = photoReportViewModel::onCancelled,
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        onOrientClick(selectedForReport)
+                                    },
+                                ) {
+                                    Text("Orientarme")
+                                }
+
+                                PhotoReportCameraButton(
+                                    stopId = selectedForReport.stopId,
+                                    onPhotoTaken = photoReportViewModel::onPhotoTaken,
+                                    onPermissionDenied = photoReportViewModel::onPermissionDenied,
+                                    onCancelled = photoReportViewModel::onCancelled,
+                                )
+                            }
                         }
                     }
 
