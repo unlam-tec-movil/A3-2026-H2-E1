@@ -10,5 +10,5 @@ class GetPhotoReportsForStopUseCase
     constructor(
         private val repository: PhotoReportRepository,
     ) {
-        suspend operator fun invoke(stopId: Long): Flow<List<PhotoReport>> = repository.getReportsByStopId(stopId)
+        operator fun invoke(stopId: Long): Flow<List<PhotoReport>> = repository.observeByStopId(stopId)
     }

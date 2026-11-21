@@ -1,9 +1,13 @@
 package ar.edu.unlam.scaffoldingandroid3.data.repositories
 
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.PhotoReportDataSource
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.PhotoReportMapper.toDomain
+import ar.edu.unlam.scaffoldingandroid3.data.mapper.PhotoReportMapper.toEntity
 import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class PhotoReportRepositoryImpl
@@ -11,9 +15,15 @@ class PhotoReportRepositoryImpl
     constructor(
         private val dataSource: PhotoReportDataSource,
     ) : PhotoReportRepository {
-        override suspend fun saveReport(report: PhotoReport) {
-            dataSource.insertReport(report)
-        }
+        override suspend fun save(report: PhotoReport) = dataSource.insert(report.toEntity())
 
-        override suspend fun getReportsByStopId(stopId: Long): Flow<List<PhotoReport>> = dataSource.getReportsByStopId(stopId)
+        override fun observeByStopId(stopId: Long): Flow<List<PhotoReport>> =
+            dataSource.observeByStopId(stopId).map { reports -> reports.map { it.toDomain() } }
+
+        override fun observeByStopIds(stopIds: List<Long>): Flow<List<PhotoReport>> =
+            if (stopIds.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                dataSource.observeByStopIds(stopIds).map { reports -> reports.map { it.toDomain() } }
+            }
     }

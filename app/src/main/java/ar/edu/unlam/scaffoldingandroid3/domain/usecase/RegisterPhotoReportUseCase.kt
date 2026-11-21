@@ -9,7 +9,5 @@ class RegisterPhotoReportUseCase
     constructor(
         private val repository: PhotoReportRepository,
     ) {
-        suspend operator fun invoke(report: PhotoReport) {
-            repository.saveReport(report)
-        }
+        suspend operator fun invoke(report: PhotoReport) = repository.save(report)
     }

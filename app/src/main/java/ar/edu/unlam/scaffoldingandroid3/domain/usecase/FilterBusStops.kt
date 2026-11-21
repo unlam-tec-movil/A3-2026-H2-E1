@@ -14,7 +14,12 @@ class FilterBusStops
             if (text.isEmpty()) return stops
             return stops.filter { stop ->
                 stop.name.contains(text, ignoreCase = true) ||
-                    stop.busLines.any { line -> line.number.toString().contains(text, ignoreCase = true) }
+                    stop.busLines.any { line ->
+                        line.number.toString().contains(text, ignoreCase = true) ||
+                            line.code.contains(text, ignoreCase = true) ||
+                            line.branch.contains(text, ignoreCase = true) ||
+                            line.destination.contains(text, ignoreCase = true)
+                    }
             }
         }
     }
