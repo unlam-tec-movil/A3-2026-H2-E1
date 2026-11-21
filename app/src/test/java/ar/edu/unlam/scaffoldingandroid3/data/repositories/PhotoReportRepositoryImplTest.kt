@@ -52,6 +52,28 @@ class PhotoReportRepositoryImplTest {
             assertEquals(listOf(report("Sin cartel")), repository.observeByStopId(42L).first())
         }
 
+    @Test
+    fun `observes reports by stop ids mapped to domain`() =
+        runTest {
+            val entity =
+                PhotoReportEntity(
+                    id = "report-1",
+                    photoUri = "content://photo/1",
+                    observation = "Sin cartel",
+                    timestamp = 1_700_000_000_000L,
+                    stopId = 42L,
+                )
+            every { dataSource.observeByStopIds(listOf(42L, 43L)) } returns flowOf(listOf(entity))
+
+            assertEquals(listOf(report("Sin cartel")), repository.observeByStopIds(listOf(42L, 43L)).first())
+        }
+
+    @Test
+    fun `observes empty list when stop ids list is empty`() =
+        runTest {
+            assertEquals(emptyList<PhotoReport>(), repository.observeByStopIds(emptyList()).first())
+        }
+
     private fun report(observation: String = "Sin cartel") =
         PhotoReport(
             id = "report-1",

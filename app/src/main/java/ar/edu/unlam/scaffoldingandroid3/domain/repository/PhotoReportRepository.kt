@@ -7,4 +7,6 @@ interface PhotoReportRepository {
     suspend fun save(report: PhotoReport)
 
     fun observeByStopId(stopId: Long): Flow<List<PhotoReport>>
+
+    fun observeByStopIds(stopIds: List<Long>): Flow<List<PhotoReport>>
 }
