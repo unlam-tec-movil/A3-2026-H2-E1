@@ -13,6 +13,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +26,7 @@ class NoticeScreenTest {
 
     private lateinit var uiState: MutableStateFlow<NoticeUiState>
     private lateinit var viewModel: NoticeViewModel
+    private var selectedStopId: Long? = null
 
     private fun showScreen(initialState: NoticeUiState) {
         uiState = MutableStateFlow(initialState)
@@ -32,7 +34,12 @@ class NoticeScreenTest {
         every { viewModel.uiState } returns uiState
         composeTestRule.setContent {
             VoyEnBondiTheme {
-                NoticeScreen(viewModel = viewModel)
+                NoticeScreen(
+                    viewModel = viewModel,
+                    onStopSelected = { stopId ->
+                        selectedStopId = stopId
+                    },
+                )
             }
         }
     }
@@ -89,19 +96,33 @@ class NoticeScreenTest {
     }
 
     @Test
-    fun `given success with notices, when shown, then displays notice card observation`() {
+    fun `given success with notices, when shown, then displays observation, stop name, map label and handles click`() {
         val report =
             PhotoReport(
                 id = "1",
                 photoUri = "content://photo/1",
                 observation = "Parada sin señalizar",
                 timestamp = System.currentTimeMillis(),
-                stopId = 1L,
+                stopId = 42L,
             )
-        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0))))
+        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Av. San Martín y Arieta"))))
 
         composeTestRule
             .onNodeWithText("Parada sin señalizar")
             .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Av. San Martín y Arieta")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Ver en el mapa")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Parada sin señalizar")
+            .performClick()
+
+        assertEquals(42L, selectedStopId)
     }
 }

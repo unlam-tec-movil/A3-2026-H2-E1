@@ -15,7 +15,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -59,8 +58,10 @@ class NoticeViewModel
                             return@launch
                         }
 
+                        val nearbyResult = getNearbyStops(location)
+                        val stopMap = nearbyResult.stops.associateBy { it.stopId }
                         val distanceByStop =
-                            getNearbyStops(location)
+                            nearbyResult
                                 .stops
                                 .associate { it.stopId to location.distanceMetersTo(it.locationData) }
                                 .filterValues { it <= RADIUS_METERS }
@@ -70,7 +71,13 @@ class NoticeViewModel
                             .map { reports ->
                                 reports
                                     .mapNotNull { report ->
-                                        distanceByStop[report.stopId]?.let { NoticeItem(report, it) }
+                                        val distance = distanceByStop[report.stopId]
+                                        val stopName = stopMap[report.stopId]?.name
+                                        if (distance != null && stopName != null) {
+                                            NoticeItem(report, distance, stopName)
+                                        } else {
+                                            null
+                                        }
                                     }.sortedBy { it.distanceMeters }
                             }.collect { _uiState.value = NoticeUiState.Success(it) }
                     } catch (e: CancellationException) {

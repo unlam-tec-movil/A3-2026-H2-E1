@@ -1,5 +1,6 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +35,10 @@ import java.util.Date
 import kotlin.math.roundToInt
 
 @Composable
-fun NoticeScreen(viewModel: NoticeViewModel = hiltViewModel()) {
+fun NoticeScreen(
+    viewModel: NoticeViewModel = hiltViewModel(),
+    onStopSelected: (Long) -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     when (val s = state) {
@@ -73,26 +77,32 @@ fun NoticeScreen(viewModel: NoticeViewModel = hiltViewModel()) {
                     retryLabel = "Actualizar",
                 )
             } else {
-                NoticeList(notices = s.notices)
+                NoticeList(notices = s.notices, onStopSelected = onStopSelected)
             }
     }
 }
 
 @Composable
-private fun NoticeList(notices: List<NoticeItem>) {
+private fun NoticeList(
+    notices: List<NoticeItem>,
+    onStopSelected: (Long) -> Unit,
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(notices, key = { it.report.id }) { notice ->
-            NoticeCard(notice)
+            NoticeCard(notice, onStopSelected)
         }
     }
 }
 
 @Composable
-private fun NoticeCard(notice: NoticeItem) {
+private fun NoticeCard(
+    notice: NoticeItem,
+    onStopSelected: (Long) -> Unit,
+) {
     val report = notice.report
     val date =
         remember(report.timestamp) {
@@ -101,7 +111,12 @@ private fun NoticeCard(notice: NoticeItem) {
                 .format(Date(report.timestamp))
         }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onStopSelected(report.stopId) },
+    ) {
         Column {
             AsyncImage(
                 model = report.photoUri,
@@ -121,9 +136,19 @@ private fun NoticeCard(notice: NoticeItem) {
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
+                    text = notice.stopName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
                     text = "A ${notice.distanceMeters.roundToInt()} m · $date",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Ver en el mapa",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
