@@ -282,7 +282,12 @@ fun NearbyStopsScreen(
                 }
 
                 HomeTab.Notices -> {
-                    NoticeScreen()
+                    NoticeScreen(
+                        onStopSelected = { stopId ->
+                            viewModel.selectBusStop(stopId)
+                            selectedTab = HomeTab.Map
+                        },
+                    )
                 }
 
                 HomeTab.Favorites -> {

@@ -5,6 +5,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
 data class NoticeItem(
     val report: PhotoReport,
     val distanceMeters: Double,
+    val stopName: String,
 )
 
 sealed interface NoticeUiState {
