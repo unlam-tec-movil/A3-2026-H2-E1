@@ -14,4 +14,7 @@ interface PhotoReportDao {
 
     @Query("SELECT * FROM photo_reports WHERE stopId = :stopId ORDER BY timestamp DESC")
     fun observeByStopId(stopId: Long): Flow<List<PhotoReportEntity>>
+
+    @Query("SELECT * FROM photo_reports WHERE stopId IN (:stopIds) ORDER BY timestamp DESC")
+    fun observeByStopIds(stopIds: List<Long>): Flow<List<PhotoReportEntity>>
 }

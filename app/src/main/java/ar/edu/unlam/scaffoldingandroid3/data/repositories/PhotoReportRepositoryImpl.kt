@@ -6,6 +6,7 @@ import ar.edu.unlam.scaffoldingandroid3.data.mapper.PhotoReportMapper.toEntity
 import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -18,4 +19,11 @@ class PhotoReportRepositoryImpl
 
         override fun observeByStopId(stopId: Long): Flow<List<PhotoReport>> =
             dataSource.observeByStopId(stopId).map { reports -> reports.map { it.toDomain() } }
+
+        override fun observeByStopIds(stopIds: List<Long>): Flow<List<PhotoReport>> =
+            if (stopIds.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                dataSource.observeByStopIds(stopIds).map { reports -> reports.map { it.toDomain() } }
+            }
     }

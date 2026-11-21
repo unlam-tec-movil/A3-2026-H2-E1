@@ -7,4 +7,6 @@ interface PhotoReportDataSource {
     suspend fun insert(report: PhotoReportEntity)
 
     fun observeByStopId(stopId: Long): Flow<List<PhotoReportEntity>>
+
+    fun observeByStopIds(stopIds: List<Long>): Flow<List<PhotoReportEntity>>
 }

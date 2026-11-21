@@ -13,4 +13,6 @@ class PhotoReportDataSourceImpl
         override suspend fun insert(report: PhotoReportEntity) = dao.insert(report)
 
         override fun observeByStopId(stopId: Long): Flow<List<PhotoReportEntity>> = dao.observeByStopId(stopId)
+
+        override fun observeByStopIds(stopIds: List<Long>): Flow<List<PhotoReportEntity>> = dao.observeByStopIds(stopIds)
     }

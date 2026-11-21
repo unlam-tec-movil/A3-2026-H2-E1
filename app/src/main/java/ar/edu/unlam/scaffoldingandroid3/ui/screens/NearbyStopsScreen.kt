@@ -282,9 +282,7 @@ fun NearbyStopsScreen(
                 }
 
                 HomeTab.Notices -> {
-                    EmptyTab(
-                        message = "Todavía no hay avisos de cortes o desvíos disponibles.",
-                    )
+                    NoticeScreen()
                 }
 
                 HomeTab.Favorites -> {
