@@ -106,7 +106,7 @@ class NoticeScreenTest {
                 timestamp = System.currentTimeMillis(),
                 stopId = 42L,
             )
-        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Av. San Martín y Arieta"))))
+        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Av. San Martín y Arieta", -34.6, -58.4))))
 
         composeTestRule
             .onNodeWithText("Parada sin señalizar")
@@ -137,7 +137,7 @@ class NoticeScreenTest {
                 timestamp = System.currentTimeMillis(),
                 stopId = 1L,
             )
-        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Parada"))))
+        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Parada", -34.6, -58.4))))
 
         composeTestRule
             .onNodeWithText("Obras")

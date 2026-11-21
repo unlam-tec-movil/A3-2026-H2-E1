@@ -98,9 +98,15 @@ class NoticeViewModel
                                 reports
                                     .mapNotNull { report ->
                                         val distance = distanceByStop[report.stopId]
-                                        val stopName = stopMap[report.stopId]?.name
-                                        if (distance != null && stopName != null) {
-                                            NoticeItem(report, distance, stopName)
+                                        val stop = stopMap[report.stopId]
+                                        if (distance != null && stop != null) {
+                                            NoticeItem(
+                                                report = report,
+                                                distanceMeters = distance,
+                                                stopName = stop.name,
+                                                latitude = stop.locationData.latitude.value,
+                                                longitude = stop.locationData.longitude.value,
+                                            )
                                         } else {
                                             null
                                         }
