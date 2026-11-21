@@ -87,7 +87,7 @@ class NoticeViewModelTest {
         }
 
     @Test
-    fun `given location and nearby stops with reports, when loading, then state is Success with sorted notices`() =
+    fun `given location and nearby stops with reports, when loading, then state is Success with sorted notices and stop name`() =
         runTest {
             val location = TestDataFactory.locationDataInstance()
             val stops = TestDataFactory.busStopList()
@@ -111,6 +111,7 @@ class NoticeViewModelTest {
                 val state = awaitItem() as NoticeUiState.Success
                 assertEquals(1, state.notices.size)
                 assertEquals("rep-1", state.notices[0].report.id)
+                assertEquals("Parada Plaza", state.notices[0].stopName)
             }
         }
 }
