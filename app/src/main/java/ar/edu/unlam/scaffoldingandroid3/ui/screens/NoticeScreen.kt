@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeFilter
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeItem
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.NoticeViewModel
@@ -70,15 +73,55 @@ fun NoticeScreen(
             )
 
         is NoticeUiState.Success ->
-            if (s.notices.isEmpty()) {
-                MessageWithRetry(
-                    message = "No hay avisos a menos de 1 km de tu ubicación.",
-                    onRetry = viewModel::load,
-                    retryLabel = "Actualizar",
+            Column(modifier = Modifier.fillMaxSize()) {
+                NoticeFilterChips(
+                    selectedFilter = s.selectedFilter,
+                    onFilterSelected = viewModel::setFilter,
                 )
-            } else {
-                NoticeList(notices = s.notices, onStopSelected = onStopSelected)
+                if (s.notices.isEmpty()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        MessageWithRetry(
+                            message = "No hay avisos cerca de vos.",
+                            onRetry = viewModel::load,
+                            retryLabel = "Actualizar",
+                        )
+                    }
+                } else {
+                    Box(modifier = Modifier.weight(1f)) {
+                        NoticeList(notices = s.notices, onStopSelected = onStopSelected)
+                    }
+                }
             }
+    }
+}
+
+@Composable
+private fun NoticeFilterChips(
+    selectedFilter: NoticeFilter,
+    onFilterSelected: (NoticeFilter) -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilterChip(
+            selected = selectedFilter == NoticeFilter.ALL,
+            onClick = { onFilterSelected(NoticeFilter.ALL) },
+            label = { Text("Todos") },
+        )
+        FilterChip(
+            selected = selectedFilter == NoticeFilter.WORKS,
+            onClick = { onFilterSelected(NoticeFilter.WORKS) },
+            label = { Text("Obras") },
+        )
+        FilterChip(
+            selected = selectedFilter == NoticeFilter.HARD_TO_FIND,
+            onClick = { onFilterSelected(NoticeFilter.HARD_TO_FIND) },
+            label = { Text("Difíciles de encontrar") },
+        )
     }
 }
 

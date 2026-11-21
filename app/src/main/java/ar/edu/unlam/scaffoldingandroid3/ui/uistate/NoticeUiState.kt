@@ -8,6 +8,12 @@ data class NoticeItem(
     val stopName: String,
 )
 
+enum class NoticeFilter {
+    ALL,
+    WORKS,
+    HARD_TO_FIND,
+}
+
 sealed interface NoticeUiState {
     data object Loading : NoticeUiState
 
@@ -21,5 +27,6 @@ sealed interface NoticeUiState {
 
     data class Success(
         val notices: List<NoticeItem>,
+        val selectedFilter: NoticeFilter = NoticeFilter.ALL,
     ) : NoticeUiState
 }
