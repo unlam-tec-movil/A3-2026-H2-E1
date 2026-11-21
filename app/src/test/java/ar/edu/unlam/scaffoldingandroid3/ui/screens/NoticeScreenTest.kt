@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ar.edu.unlam.scaffoldingandroid3.domain.model.PhotoReport
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.VoyEnBondiTheme
+import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeFilter
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeItem
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.NoticeViewModel
@@ -91,7 +92,7 @@ class NoticeScreenTest {
         showScreen(NoticeUiState.Success(emptyList()))
 
         composeTestRule
-            .onNodeWithText("No hay avisos a menos de 1 km de tu ubicación.")
+            .onNodeWithText("No hay avisos cerca de vos.")
             .assertIsDisplayed()
     }
 
@@ -105,7 +106,7 @@ class NoticeScreenTest {
                 timestamp = System.currentTimeMillis(),
                 stopId = 42L,
             )
-        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Av. San Martín y Arieta"))))
+        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Av. San Martín y Arieta", -34.6, -58.4))))
 
         composeTestRule
             .onNodeWithText("Parada sin señalizar")
@@ -124,5 +125,24 @@ class NoticeScreenTest {
             .performClick()
 
         assertEquals(42L, selectedStopId)
+    }
+
+    @Test
+    fun `given success with notices, when clicking works filter, then view model sets filter`() {
+        val report =
+            PhotoReport(
+                id = "1",
+                photoUri = "content://photo/1",
+                observation = "Obras en la parada",
+                timestamp = System.currentTimeMillis(),
+                stopId = 1L,
+            )
+        showScreen(NoticeUiState.Success(listOf(NoticeItem(report, 150.0, "Parada", -34.6, -58.4))))
+
+        composeTestRule
+            .onNodeWithText("Obras")
+            .performClick()
+
+        verify(exactly = 1) { viewModel.setFilter(NoticeFilter.WORKS) }
     }
 }

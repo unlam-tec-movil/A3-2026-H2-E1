@@ -7,6 +7,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.PhotoReportRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
+import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeFilter
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeItem
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,10 +36,35 @@ class NoticeViewModel
         private val _uiState = MutableStateFlow<NoticeUiState>(NoticeUiState.Loading)
         val uiState: StateFlow<NoticeUiState> = _uiState.asStateFlow()
 
+        private var allNotices: List<NoticeItem> = emptyList()
+        private var currentFilter: NoticeFilter = NoticeFilter.ALL
+
         private var loadJob: Job? = null
 
         init {
             load()
+        }
+
+        fun setFilter(filter: NoticeFilter) {
+            currentFilter = filter
+            updateSuccessState()
+        }
+
+        private fun updateSuccessState() {
+            val filtered =
+                when (currentFilter) {
+                    NoticeFilter.ALL -> allNotices
+                    NoticeFilter.WORKS ->
+                        allNotices.filter {
+                            it.report.observation.contains("obra", ignoreCase = true)
+                        }
+                    NoticeFilter.HARD_TO_FIND ->
+                        allNotices.filter {
+                            it.report.observation.contains("difícil", ignoreCase = true) ||
+                                it.report.observation.contains("encontrar", ignoreCase = true)
+                        }
+                }
+            _uiState.value = NoticeUiState.Success(filtered, currentFilter)
         }
 
         fun load() {
@@ -72,14 +98,23 @@ class NoticeViewModel
                                 reports
                                     .mapNotNull { report ->
                                         val distance = distanceByStop[report.stopId]
-                                        val stopName = stopMap[report.stopId]?.name
-                                        if (distance != null && stopName != null) {
-                                            NoticeItem(report, distance, stopName)
+                                        val stop = stopMap[report.stopId]
+                                        if (distance != null && stop != null) {
+                                            NoticeItem(
+                                                report = report,
+                                                distanceMeters = distance,
+                                                stopName = stop.name,
+                                                latitude = stop.locationData.latitude.value,
+                                                longitude = stop.locationData.longitude.value,
+                                            )
                                         } else {
                                             null
                                         }
                                     }.sortedBy { it.distanceMeters }
-                            }.collect { _uiState.value = NoticeUiState.Success(it) }
+                            }.collect { notices ->
+                                allNotices = notices
+                                updateSuccessState()
+                            }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: SecurityException) {

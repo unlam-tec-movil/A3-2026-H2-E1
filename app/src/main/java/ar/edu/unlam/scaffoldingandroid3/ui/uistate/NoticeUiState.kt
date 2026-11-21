@@ -6,7 +6,15 @@ data class NoticeItem(
     val report: PhotoReport,
     val distanceMeters: Double,
     val stopName: String,
+    val latitude: Double,
+    val longitude: Double,
 )
+
+enum class NoticeFilter {
+    ALL,
+    WORKS,
+    HARD_TO_FIND,
+}
 
 sealed interface NoticeUiState {
     data object Loading : NoticeUiState
@@ -21,5 +29,6 @@ sealed interface NoticeUiState {
 
     data class Success(
         val notices: List<NoticeItem>,
+        val selectedFilter: NoticeFilter = NoticeFilter.ALL,
     ) : NoticeUiState
 }
