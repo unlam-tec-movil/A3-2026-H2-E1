@@ -271,6 +271,35 @@ fun BusStopCard(
                                         ).show()
                                 },
                             )
+                            DropdownMenuItem(
+                                text = { Text("Otras apps") },
+                                onClick = {
+                                    showShareMenu = false
+                                    val linesText =
+                                        if (stop.busLines.isEmpty()) {
+                                            "Sin líneas informadas"
+                                        } else {
+                                            stop.busLines.joinToString(", ") { line ->
+                                                buildString {
+                                                    append(line.number)
+                                                    if (line.branch.isNotBlank()) append(" ${line.branch}")
+                                                    if (line.destination.isNotBlank()) append(" → ${line.destination}")
+                                                }
+                                            }
+                                        }
+                                    val mapsUrl =
+                                        "https://maps.google.com/?q=${stop.locationData.latitude.value},${stop.locationData.longitude.value}"
+                                    val message = "Parada: ${stop.name}\nLíneas: $linesText\nUbicación: $mapsUrl"
+
+                                    val sendIntent =
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, message)
+                                        }
+                                    val chooser = Intent.createChooser(sendIntent, "Compartir parada")
+                                    context.startActivity(chooser)
+                                },
+                            )
                         }
                     }
                 }
