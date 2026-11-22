@@ -43,6 +43,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,6 +92,13 @@ import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.PhotoReportViewModel
 import kotlinx.coroutines.launch
 
+internal fun favoriteActionMessage(wasFavorite: Boolean): String =
+    if (wasFavorite) {
+        "Parada eliminada de favoritas"
+    } else {
+        "Parada agregada a favoritas"
+    }
+
 @Composable
 fun NearbyStopsScreen(
     viewModel: MapViewModel = hiltViewModel(),
@@ -99,6 +109,8 @@ fun NearbyStopsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
     val favoriteIds by favoriteViewModel.favoriteStopIds.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
 
     var selectedTab by rememberSaveable {
         mutableStateOf(HomeTab.Map)
@@ -156,6 +168,9 @@ fun NearbyStopsScreen(
     }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         bottomBar = {
             HomeBottomBar(
                 selectedTab = selectedTab,
@@ -272,7 +287,18 @@ fun NearbyStopsScreen(
                                         }
 
                                     if (stop != null) {
+                                        val wasFavorite = stopId in favoriteIds
+
                                         favoriteViewModel.toggleFavorite(stop)
+
+                                        snackbarScope.launch {
+                                            snackbarHostState.currentSnackbarData?.dismiss()
+
+                                            snackbarHostState.showSnackbar(
+                                                message = favoriteActionMessage(wasFavorite),
+                                                duration = SnackbarDuration.Short,
+                                            )
+                                        }
                                     }
                                 },
                                 selectedFavorite = selectedFavorite,
@@ -297,6 +323,10 @@ fun NearbyStopsScreen(
                             viewModel.selectBusStop(stop.stopId)
                             selectedTab = HomeTab.Map
                         },
+                        onExploreMap = {
+                            selectedTab = HomeTab.Map
+                        },
+                        viewModel = favoriteViewModel,
                     )
                 }
             }
