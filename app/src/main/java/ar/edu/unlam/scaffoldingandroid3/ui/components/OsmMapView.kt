@@ -133,6 +133,7 @@ fun OsmMapView(
                 fillPaint.color = fillColor
                 outlinePaint.color = primaryColor
                 outlinePaint.strokeWidth = 3f
+                infoWindow = null
             }
         map.overlays.add(circleOverlay)
 
