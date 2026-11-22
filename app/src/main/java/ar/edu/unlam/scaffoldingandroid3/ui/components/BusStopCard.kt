@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.FavoriteRed
@@ -53,8 +54,9 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val MAX_INITIAL_LINES = 4
+private const val QUIT_FROM_FAVORITES = "Quitar de favoritos"
+private const val ADD_FAVORITES = "Agregar a favoritos"
 
-/** Tarjeta de una parada cercana: nombre, distancia, contador y chips de líneas con ramal y destino. */
 @Composable
 fun BusStopCard(
     stop: BusStop,
@@ -69,15 +71,9 @@ fun BusStopCard(
     var showShareMenu by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-
     val totalLines = stop.busLines.size
     val hasOverflow = totalLines > MAX_INITIAL_LINES + 1
-    val displayedLines =
-        if (expanded || !hasOverflow) {
-            stop.busLines
-        } else {
-            stop.busLines.take(MAX_INITIAL_LINES)
-        }
+    val displayedLines = getLinesToDisplay(stop, expanded, hasOverflow)
     val hiddenCount = totalLines - displayedLines.size
 
     Card(
@@ -112,7 +108,7 @@ fun BusStopCard(
                     IconButton(onClick = onFavoriteClick) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos",
+                            contentDescription = if (isFavorite) QUIT_FROM_FAVORITES else ADD_FAVORITES,
                             tint = if (isFavorite) FavoriteRed else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -206,30 +202,16 @@ fun BusStopCard(
                             expanded = showShareMenu,
                             onDismissRequest = { showShareMenu = false },
                         ) {
+                            val shareMessage = buildShareMessage(stop)
+
                             DropdownMenuItem(
                                 text = { Text("Enviar por WhatsApp") },
                                 onClick = {
                                     showShareMenu = false
-                                    val linesText =
-                                        if (stop.busLines.isEmpty()) {
-                                            "Sin líneas informadas"
-                                        } else {
-                                            stop.busLines.joinToString(", ") { line ->
-                                                buildString {
-                                                    append(line.number)
-                                                    if (line.branch.isNotBlank()) append(" ${line.branch}")
-                                                    if (line.destination.isNotBlank()) append(" → ${line.destination}")
-                                                }
-                                            }
-                                        }
-                                    val mapsUrl =
-                                        "https://maps.google.com/?q=${stop.locationData.latitude.value},${stop.locationData.longitude.value}"
-                                    val message = "Parada: ${stop.name}\nLíneas: $linesText\nUbicación: $mapsUrl"
-
                                     val intent =
                                         Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, message)
+                                            putExtra(Intent.EXTRA_TEXT, shareMessage.message)
                                             setPackage("com.whatsapp")
                                         }
                                     try {
@@ -239,7 +221,7 @@ fun BusStopCard(
                                             val waIntent =
                                                 Intent(
                                                     Intent.ACTION_VIEW,
-                                                    Uri.parse("https://wa.me/?text=${Uri.encode(message)}"),
+                                                    "https://wa.me/?text=${Uri.encode(shareMessage.message)}".toUri(),
                                                 )
                                             context.startActivity(waIntent)
                                         } catch (_: Exception) {
@@ -247,7 +229,7 @@ fun BusStopCard(
                                                 Intent.createChooser(
                                                     Intent(Intent.ACTION_SEND).apply {
                                                         type = "text/plain"
-                                                        putExtra(Intent.EXTRA_TEXT, message)
+                                                        putExtra(Intent.EXTRA_TEXT, shareMessage.message)
                                                     },
                                                     "Compartir parada",
                                                 )
@@ -260,9 +242,7 @@ fun BusStopCard(
                                 text = { Text("Copiar enlace") },
                                 onClick = {
                                     showShareMenu = false
-                                    val mapsUrl =
-                                        "https://maps.google.com/?q=${stop.locationData.latitude.value},${stop.locationData.longitude.value}"
-                                    clipboardManager.setText(AnnotatedString(mapsUrl))
+                                    clipboardManager.setText(AnnotatedString(shareMessage.mapsUrl))
                                     Toast
                                         .makeText(
                                             context,
@@ -275,28 +255,13 @@ fun BusStopCard(
                                 text = { Text("Otras apps") },
                                 onClick = {
                                     showShareMenu = false
-                                    val linesText =
-                                        if (stop.busLines.isEmpty()) {
-                                            "Sin líneas informadas"
-                                        } else {
-                                            stop.busLines.joinToString(", ") { line ->
-                                                buildString {
-                                                    append(line.number)
-                                                    if (line.branch.isNotBlank()) append(" ${line.branch}")
-                                                    if (line.destination.isNotBlank()) append(" → ${line.destination}")
-                                                }
-                                            }
-                                        }
-                                    val mapsUrl =
-                                        "https://maps.google.com/?q=${stop.locationData.latitude.value},${stop.locationData.longitude.value}"
-                                    val message = "Parada: ${stop.name}\nLíneas: $linesText\nUbicación: $mapsUrl"
-
                                     val sendIntent =
                                         Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, message)
+                                            putExtra(Intent.EXTRA_TEXT, shareMessage.message)
                                         }
-                                    val chooser = Intent.createChooser(sendIntent, "Compartir parada")
+                                    val chooser =
+                                        Intent.createChooser(sendIntent, "Compartir parada")
                                     context.startActivity(chooser)
                                 },
                             )
@@ -313,21 +278,7 @@ private fun BusLineChip(
     line: BusLine,
     modifier: Modifier = Modifier,
 ) {
-    val chipLabel =
-        buildString {
-            append(line.number)
-            if (line.branch.isNotBlank()) {
-                append(" ${line.branch}")
-            } else if (line.code.isNotBlank() && line.code != line.number.toString()) {
-                val nonDigits = line.code.filter { !it.isDigit() }.trim()
-                if (nonDigits.isNotBlank()) {
-                    append(" $nonDigits")
-                }
-            }
-            if (line.destination.isNotBlank()) {
-                append(" → ${line.destination}")
-            }
-        }
+    val chipLabel = buildLineLabel(line)
 
     SuggestionChip(
         onClick = {},
@@ -352,3 +303,57 @@ private fun formatDistance(meters: Double): String =
     } else {
         String.format(Locale.getDefault(), "%.1f km", meters / 1_000)
     }
+
+private fun getLinesToDisplay(
+    stop: BusStop,
+    expanded: Boolean,
+    hasOverflow: Boolean,
+): List<BusLine> =
+    if (expanded || !hasOverflow) {
+        stop.busLines
+    } else {
+        stop.busLines.take(MAX_INITIAL_LINES)
+    }
+
+private fun buildLineLabel(line: BusLine): String =
+    buildString {
+        append(line.number)
+        if (line.branch.isNotBlank()) {
+            append(" ${line.branch}")
+        } else if (line.code.isNotBlank() && line.code != line.number.toString()) {
+            val nonDigits = line.code.filter { !it.isDigit() }.trim()
+            if (nonDigits.isNotBlank()) {
+                append(" $nonDigits")
+            }
+        }
+        if (line.destination.isNotBlank()) {
+            append(" → ${line.destination}")
+        }
+    }
+
+private fun buildShareMessage(stop: BusStop): ShareMessage =
+    ShareMessage(
+        stopName = stop.name,
+        linesText =
+            if (stop.busLines.isEmpty()) {
+                "Sin líneas informadas"
+            } else {
+                stop.busLines.joinToString(", ") { line ->
+                    buildString {
+                        append(line.number)
+                        if (line.branch.isNotBlank()) append(" ${line.branch}")
+                        if (line.destination.isNotBlank()) append(" → ${line.destination}")
+                    }
+                }
+            },
+        mapsUrl = "https://maps.google.com/?q=${stop.locationData.latitude.value},${stop.locationData.longitude.value}",
+    )
+
+data class ShareMessage(
+    val stopName: String,
+    val linesText: String,
+    val mapsUrl: String,
+) {
+    val message: String
+        get() = "Parada: $stopName\nLíneas: $linesText\nUbicación: $mapsUrl"
+}
