@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.VoyEnBondiTheme
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
@@ -116,5 +117,65 @@ class FavoriteBusStopsScreenTest {
             .performClick()
 
         assertEquals(testStop, selectedStop)
+    }
+
+    @Test
+    fun `search filters favorite stops by name`() {
+        favoriteIds.value = setOf(testStop.stopId)
+        favoriteStops.value = listOf(testStop)
+
+        showScreen()
+
+        composeTestRule
+            .onNodeWithText("Buscar favoritas")
+            .performTextInput("Florencio")
+
+        composeTestRule
+            .onNodeWithText("Florencio Varela y Villegas")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("1 parada encontrada")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `search displays empty results message`() {
+        favoriteIds.value = setOf(testStop.stopId)
+        favoriteStops.value = listOf(testStop)
+
+        showScreen()
+
+        composeTestRule
+            .onNodeWithText("Buscar favoritas")
+            .performTextInput("Parada inexistente")
+
+        composeTestRule
+            .onNodeWithText("No encontramos favoritas con esa búsqueda")
+            .assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithText("Florencio Varela y Villegas")
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `clearing search restores favorite stops`() {
+        favoriteIds.value = setOf(testStop.stopId)
+        favoriteStops.value = listOf(testStop)
+
+        showScreen()
+
+        composeTestRule
+            .onNodeWithText("Buscar favoritas")
+            .performTextInput("Inexistente")
+
+        composeTestRule
+            .onNodeWithContentDescription("Limpiar búsqueda")
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText("Florencio Varela y Villegas")
+            .assertIsDisplayed()
     }
 }
