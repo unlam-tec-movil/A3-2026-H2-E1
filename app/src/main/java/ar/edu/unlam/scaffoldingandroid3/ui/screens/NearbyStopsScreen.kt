@@ -1,3 +1,4 @@
+
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
@@ -48,7 +49,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -273,7 +273,9 @@ fun NearbyStopsScreen(
                                 },
                                 onClusterClick = { clusterStops ->
                                     selectedFavorite = null
-                                    viewModel.filterByCluster(clusterStops.map { it.stopId }.toSet())
+                                    viewModel.filterByCluster(
+                                        clusterStops.map { it.stopId }.toSet(),
+                                    )
                                 },
                                 onClearClusterFilter = {
                                     viewModel.clearClusterFilter()
@@ -528,7 +530,11 @@ private fun NearbyStopsContent(
 
     LaunchedEffect(state.selectedStopId) {
         if (state.selectedStopId != null) {
-            val index = state.filteredStops.indexOfFirst { it.stopId == state.selectedStopId }
+            val index =
+                state.filteredStops.indexOfFirst {
+                    it.stopId == state.selectedStopId
+                }
+
             if (index >= 0) {
                 listState.animateScrollToItem(index)
             }
@@ -587,27 +593,33 @@ private fun NearbyStopsContent(
                         }
                     }
 
-                    Row(
+                    Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 8.dp,
+                                ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = "Paradas cerca de vos",
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
                         )
+
                         if (selectedForReport != null) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(
+                                Button(
                                     onClick = {
                                         onOrientClick(selectedForReport)
                                     },
+                                    modifier = Modifier.weight(1f),
                                 ) {
                                     Text("Orientarme")
                                 }
@@ -629,13 +641,19 @@ private fun NearbyStopsContent(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    .padding(
+                                        horizontal = 16.dp,
+                                        vertical = 4.dp,
+                                    ),
                         ) {
                             Row(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        .padding(
+                                            horizontal = 12.dp,
+                                            vertical = 6.dp,
+                                        ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
@@ -645,6 +663,7 @@ private fun NearbyStopsContent(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.Medium,
                                 )
+
                                 IconButton(
                                     onClick = onClearClusterFilter,
                                     modifier = Modifier.size(24.dp),
@@ -732,12 +751,14 @@ private fun NearbyStopsContent(
                 userFocusTrigger = userFocusTrigger,
                 onStopClick = { stop ->
                     onStopClick(stop)
+
                     coroutineScope.launch {
                         scaffoldState.bottomSheetState.expand()
                     }
                 },
                 onClusterClick = { clusterStops ->
                     onClusterClick(clusterStops)
+
                     coroutineScope.launch {
                         scaffoldState.bottomSheetState.expand()
                     }
@@ -746,7 +767,10 @@ private fun NearbyStopsContent(
             )
 
             Column(
-                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
             ) {
                 HomeHeader(
                     query = query,
@@ -759,7 +783,10 @@ private fun NearbyStopsContent(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(end = 16.dp, top = 12.dp),
+                            .padding(
+                                end = 16.dp,
+                                top = 12.dp,
+                            ),
                 ) {
                     FloatingActionButton(
                         onClick = {
