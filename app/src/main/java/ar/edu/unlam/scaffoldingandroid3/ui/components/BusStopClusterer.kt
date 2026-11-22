@@ -56,15 +56,13 @@ fun clusterBusStops(
             Pair(emptyList(), stops)
         }
 
-    val result = mutableListOf<ClusterItem>()
+    val clusters = ArrayList<ClusterItem>()
 
     selectedStops.forEach { selected ->
-        result.add(ClusterItem.Single(selected))
+        clusters.add(ClusterItem.Single(selected))
     }
 
-    if (unselectedStops.isEmpty()) return result
-
-    val visited = BooleanArray(unselectedStops.size)
+    val visitedIndices = mutableSetOf<Int>()
     val screenPoints =
         unselectedStops.map { stop ->
             toScreenPixels(
@@ -73,29 +71,32 @@ fun clusterBusStops(
             )
         }
 
-    for (i in unselectedStops.indices) {
-        if (visited[i]) continue
-        visited[i] = true
+    for (index in unselectedStops.indices) {
+        if (visitedIndices.contains(index)) continue
+        visitedIndices.add(index)
 
-        val clusterMembers = mutableListOf(unselectedStops[i])
-        val p1 = screenPoints[i]
+        val clusterMembers =
+            ArrayList<BusStop>().apply {
+                add(unselectedStops[index])
+            }
+        val currentPoint = screenPoints[index]
 
-        for (j in i + 1 until unselectedStops.size) {
-            if (visited[j]) continue
-            val p2 = screenPoints[j]
-            val distance = hypot(p1.x - p2.x, p1.y - p2.y)
-            if (distance <= radiusPixels) {
-                visited[j] = true
-                clusterMembers.add(unselectedStops[j])
+        for (otherIndex in index + 1 until unselectedStops.size) {
+            if (visitedIndices.contains(otherIndex)) continue
+            val otherPoint = screenPoints[otherIndex]
+            val distancePixels = hypot(currentPoint.x - otherPoint.x, currentPoint.y - otherPoint.y)
+            if (distancePixels <= radiusPixels) {
+                visitedIndices.add(otherIndex)
+                clusterMembers.add(unselectedStops[otherIndex])
             }
         }
 
         if (clusterMembers.size == 1) {
-            result.add(ClusterItem.Single(clusterMembers.first()))
+            clusters.add(ClusterItem.Single(clusterMembers.first()))
         } else {
             val avgLat = clusterMembers.map { it.locationData.latitude.value }.average()
             val avgLon = clusterMembers.map { it.locationData.longitude.value }.average()
-            result.add(
+            clusters.add(
                 ClusterItem.Group(
                     stops = clusterMembers,
                     centerLat = avgLat,
@@ -105,5 +106,5 @@ fun clusterBusStops(
         }
     }
 
-    return result
+    return clusters
 }
