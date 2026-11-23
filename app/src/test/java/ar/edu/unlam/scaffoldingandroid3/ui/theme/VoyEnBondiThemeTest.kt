@@ -24,20 +24,20 @@ class VoyEnBondiThemeTest {
     }
 
     @Test
-    fun `given the light theme, when reading the primary color, then it is petroleum`() {
+    fun `given the light theme, when reading the primary color, then it is light primary`() {
         // Given / When
         val primary = primaryColorFor(darkTheme = false)
 
         // Then
-        assertEquals(Petroleum, primary)
+        assertEquals(LightPrimary, primary)
     }
 
     @Test
-    fun `given the dark theme, when reading the primary color, then it is dark petroleum`() {
+    fun `given the dark theme, when reading the primary color, then it is dark primary`() {
         // Given / When
         val primary = primaryColorFor(darkTheme = true)
 
         // Then
-        assertEquals(PetroleumDark, primary)
+        assertEquals(DarkPrimary, primary)
     }
 }

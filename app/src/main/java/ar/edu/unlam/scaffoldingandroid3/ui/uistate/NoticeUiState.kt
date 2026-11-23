@@ -16,6 +16,11 @@ enum class NoticeFilter {
     HARD_TO_FIND,
 }
 
+enum class NoticeSortOrder {
+    CLOSEST,
+    MOST_RECENT,
+}
+
 sealed interface NoticeUiState {
     data object Loading : NoticeUiState
 
@@ -30,5 +35,6 @@ sealed interface NoticeUiState {
     data class Success(
         val notices: List<NoticeItem>,
         val selectedFilter: NoticeFilter = NoticeFilter.ALL,
+        val selectedSortOrder: NoticeSortOrder = NoticeSortOrder.CLOSEST,
     ) : NoticeUiState
 }

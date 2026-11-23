@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.ui.theme.BondiGradient
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.FavoriteRed
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -91,6 +93,7 @@ fun BusStopCard(
             } else {
                 CardDefaults.cardColors()
             },
+        border = if (selected) BorderStroke(2.dp, BondiGradient) else null,
     ) {
         Column(
             modifier =

@@ -83,6 +83,7 @@ import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
 import ar.edu.unlam.scaffoldingandroid3.ui.components.SearchHistoryChips
+import ar.edu.unlam.scaffoldingandroid3.ui.theme.BondiGradient
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
@@ -328,8 +329,11 @@ private fun HomeHeader(
         ) {
             Text(
                 text = "Voy en Bondi",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
+                style =
+                    MaterialTheme.typography.titleMedium.copy(
+                        brush = BondiGradient,
+                        fontWeight = FontWeight.Bold,
+                    ),
                 fontWeight = FontWeight.Bold,
             )
 
@@ -547,7 +551,7 @@ private fun NearbyStopsContent(
 
                     if (state.isDemo) {
                         Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -27,6 +30,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -42,12 +46,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ar.edu.unlam.scaffoldingandroid3.ui.theme.DicifilesColor
+import ar.edu.unlam.scaffoldingandroid3.ui.theme.ObrasColor
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeFilter
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeItem
+import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeSortOrder
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.NoticeViewModel
 import coil.compose.AsyncImage
@@ -92,9 +100,11 @@ fun NoticeScreen(
 
         is NoticeUiState.Success ->
             Column(modifier = Modifier.fillMaxSize()) {
-                NoticeFilterChips(
+                NoticeFilterAndSortSection(
                     selectedFilter = s.selectedFilter,
                     onFilterSelected = viewModel::setFilter,
+                    selectedSortOrder = s.selectedSortOrder,
+                    onSortSelected = viewModel::setSortOrder,
                 )
                 if (s.notices.isEmpty()) {
                     Box(modifier = Modifier.weight(1f)) {
@@ -114,32 +124,86 @@ fun NoticeScreen(
 }
 
 @Composable
-private fun NoticeFilterChips(
+private fun NoticeFilterAndSortSection(
     selectedFilter: NoticeFilter,
     onFilterSelected: (NoticeFilter) -> Unit,
+    selectedSortOrder: NoticeSortOrder,
+    onSortSelected: (NoticeSortOrder) -> Unit,
 ) {
+    var showSortMenu by rememberSaveable { mutableStateOf(false) }
+
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilterChip(
-            selected = selectedFilter == NoticeFilter.ALL,
-            onClick = { onFilterSelected(NoticeFilter.ALL) },
-            label = { Text("Todos") },
-        )
-        FilterChip(
-            selected = selectedFilter == NoticeFilter.WORKS,
-            onClick = { onFilterSelected(NoticeFilter.WORKS) },
-            label = { Text("Obras") },
-        )
-        FilterChip(
-            selected = selectedFilter == NoticeFilter.HARD_TO_FIND,
-            onClick = { onFilterSelected(NoticeFilter.HARD_TO_FIND) },
-            label = { Text("Difíciles de encontrar") },
-        )
+        Row(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FilterChip(
+                selected = selectedFilter == NoticeFilter.ALL,
+                onClick = { onFilterSelected(NoticeFilter.ALL) },
+                label = { Text("Todos") },
+            )
+            FilterChip(
+                selected = selectedFilter == NoticeFilter.WORKS,
+                onClick = { onFilterSelected(NoticeFilter.WORKS) },
+                label = { Text("Obras") },
+            )
+            FilterChip(
+                selected = selectedFilter == NoticeFilter.HARD_TO_FIND,
+                onClick = { onFilterSelected(NoticeFilter.HARD_TO_FIND) },
+                label = { Text("Difíciles de encontrar") },
+            )
+        }
+
+        Box {
+            IconButton(onClick = { showSortMenu = true }) {
+                Icon(
+                    imageVector = Icons.Filled.FilterList,
+                    contentDescription = "Ordenar avisos",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            DropdownMenu(
+                expanded = showSortMenu,
+                onDismissRequest = { showSortMenu = false },
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "Más cercanos",
+                            fontWeight = if (selectedSortOrder == NoticeSortOrder.CLOSEST) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    onClick = {
+                        showSortMenu = false
+                        onSortSelected(NoticeSortOrder.CLOSEST)
+                    },
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "Más recientes",
+                            fontWeight = if (selectedSortOrder == NoticeSortOrder.MOST_RECENT) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    onClick = {
+                        showSortMenu = false
+                        onSortSelected(NoticeSortOrder.MOST_RECENT)
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -176,6 +240,14 @@ private fun NoticeCard(
                 .format(Date(report.timestamp))
         }
 
+    val observationColor =
+        when {
+            report.observation.contains("obra", ignoreCase = true) -> ObrasColor
+            report.observation.contains("difícil", ignoreCase = true) ||
+                report.observation.contains("encontrar", ignoreCase = true) -> DicifilesColor
+            else -> MaterialTheme.colorScheme.onSurface
+        }
+
     Card(
         modifier =
             Modifier
@@ -199,6 +271,8 @@ private fun NoticeCard(
                 Text(
                     text = report.observation,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = observationColor,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = notice.stopName,

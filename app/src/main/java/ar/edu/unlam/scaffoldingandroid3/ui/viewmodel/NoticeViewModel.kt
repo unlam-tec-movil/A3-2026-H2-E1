@@ -9,6 +9,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeFilter
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeItem
+import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeSortOrder
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.NoticeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -38,6 +39,7 @@ class NoticeViewModel
 
         private var allNotices: List<NoticeItem> = emptyList()
         private var currentFilter: NoticeFilter = NoticeFilter.ALL
+        private var currentSortOrder: NoticeSortOrder = NoticeSortOrder.CLOSEST
 
         private var loadJob: Job? = null
 
@@ -47,6 +49,11 @@ class NoticeViewModel
 
         fun setFilter(filter: NoticeFilter) {
             currentFilter = filter
+            updateSuccessState()
+        }
+
+        fun setSortOrder(sortOrder: NoticeSortOrder) {
+            currentSortOrder = sortOrder
             updateSuccessState()
         }
 
@@ -64,7 +71,14 @@ class NoticeViewModel
                                 it.report.observation.contains("encontrar", ignoreCase = true)
                         }
                 }
-            _uiState.value = NoticeUiState.Success(filtered, currentFilter)
+
+            val sorted =
+                when (currentSortOrder) {
+                    NoticeSortOrder.CLOSEST -> filtered.sortedBy { it.distanceMeters }
+                    NoticeSortOrder.MOST_RECENT -> filtered.sortedByDescending { it.report.timestamp }
+                }
+
+            _uiState.value = NoticeUiState.Success(sorted, currentFilter, currentSortOrder)
         }
 
         fun load() {

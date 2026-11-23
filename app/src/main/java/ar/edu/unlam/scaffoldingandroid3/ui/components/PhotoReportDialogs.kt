@@ -4,8 +4,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Construction
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,20 +52,44 @@ fun PhotoReportDialogs(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
+                            val isObrasSelected = selectedCategory == "Obras"
                             FilterChip(
-                                selected = selectedCategory == "Obras",
+                                selected = isObrasSelected,
                                 onClick = { selectedCategory = "Obras" },
                                 label = { Text("Obras") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (isObrasSelected) Icons.Filled.Check else Icons.Filled.Construction,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
                             )
+                            val isHardSelected = selectedCategory == "Difíciles de encontrar"
                             FilterChip(
-                                selected = selectedCategory == "Difíciles de encontrar",
+                                selected = isHardSelected,
                                 onClick = { selectedCategory = "Difíciles de encontrar" },
                                 label = { Text("Difíciles de encontrar") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (isHardSelected) Icons.Filled.Check else Icons.Filled.Info,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
                             )
+                            val isOtherSelected = selectedCategory == "Otro"
                             FilterChip(
-                                selected = selectedCategory == "Otro",
+                                selected = isOtherSelected,
                                 onClick = { selectedCategory = "Otro" },
                                 label = { Text("Otro") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (isOtherSelected) Icons.Filled.Check else Icons.Filled.MoreHoriz,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
                             )
                         }
 
