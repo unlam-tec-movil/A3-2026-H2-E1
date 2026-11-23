@@ -3,6 +3,7 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unlam.scaffoldingandroid3.domain.enums.NearbyStopsOrigin
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
@@ -10,11 +11,16 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.NearbyStopsResult
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.SensorRepository
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.CalculateDestinationDirection
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.CheckOrientationSensorAvailability
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.FilterBusStops
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetPedestrianRoute
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,14 +38,7 @@ private const val UNKNOWN_ERROR = "Unknown error occurred while loading the user
 private val DEFAULT_MANUAL_LOCATION = LocationData(Latitude(-34.6705), Longitude(-58.5628))
 
 /**
- * ViewModel unificado de la pantalla principal: mapa y lista de paradas cercanas.
- *
- * Absorbe lo mejor de las dos arquitecturas que se fusionaron:
- * - Carga la ubicación con timeout y las paradas cercanas con uso de casos.
- * - Comunica por qué no hay ubicación (permiso, servicio deshabilitado o sin fix) en lugar
- *   de caer silenciosamente a una ubicación por defecto.
- * - Reporta el origen de las paradas (remoto, caché o demo) para que la pantalla informe.
- * - Filtra las paradas por texto de búsqueda y persiste el historial de búsquedas.
+ * ViewModel unificado de la pantalla principal: mapa, lista de paradas cercanas y navegación.
  */
 @HiltViewModel
 class MapViewModel
@@ -50,6 +49,10 @@ class MapViewModel
         private val filterBusStops: FilterBusStops,
         private val busStopRepository: BusStopRepository,
         private val locationRepository: LocationRepository,
+        private val checkOrientationSensorAvailability: CheckOrientationSensorAvailability,
+        private val calculateDestinationDirection: CalculateDestinationDirection,
+        private val sensorRepository: SensorRepository,
+        private val getPedestrianRoute: GetPedestrianRoute,
     ) : ViewModel() {
         @Suppress("ktlint:standard:backing-property-naming")
         private val _uiState = MutableStateFlow<MapUiState>(MapUiState.Loading)
@@ -66,6 +69,11 @@ class MapViewModel
 
         private var currentQuery = ""
         private var clusterFilterStopIds: Set<Long>? = null
+        private var orientationJob: Job? = null
+
+        override fun onCleared() {
+            stopNavigationSensors()
+        }
 
         /**
          * Registra el resultado del pedido de permisos y, si hubo alguno otorgado, arranca
@@ -91,6 +99,7 @@ class MapViewModel
          */
         fun loadUserLocationAndStops(isApproximate: Boolean = false) {
             viewModelScope.launch {
+                stopNavigationSensors()
                 _uiState.value = MapUiState.Loading
 
                 try {
@@ -117,9 +126,14 @@ class MapViewModel
         /** Carga las paradas alrededor de un punto fijo, sin usar la ubicación del pasajero. */
         fun exploreManually() {
             viewModelScope.launch {
+                stopNavigationSensors()
                 _uiState.value = MapUiState.Loading
                 try {
-                    updateWithStops(DEFAULT_MANUAL_LOCATION, getNearbyStops(DEFAULT_MANUAL_LOCATION), isApproximate = false)
+                    updateWithStops(
+                        DEFAULT_MANUAL_LOCATION,
+                        getNearbyStops(DEFAULT_MANUAL_LOCATION),
+                        isApproximate = false,
+                    )
                 } catch (_: Exception) {
                     _uiState.value = MapUiState.Error(UNKNOWN_ERROR)
                 }
@@ -177,7 +191,125 @@ class MapViewModel
          */
         fun selectBusStop(stopId: Long?) {
             val current = _uiState.value as? MapUiState.Success ?: return
-            _uiState.value = current.copy(selectedStopId = stopId)
+            if (stopId == null) {
+                if (current.isNavigationMode) {
+                    stopNavigation()
+                }
+                _uiState.value = (_uiState.value as? MapUiState.Success)?.copy(selectedStopId = null) ?: return
+            } else {
+                if (current.isNavigationMode && stopId != current.selectedStopId) {
+                    val newTarget =
+                        current.busStops.firstOrNull { it.stopId == stopId }
+                            ?: current.filteredStops.firstOrNull { it.stopId == stopId }
+                    if (newTarget != null) {
+                        _uiState.value = current.copy(selectedStopId = stopId)
+                        startNavigation(newTarget)
+                    } else {
+                        stopNavigation()
+                        _uiState.value = (_uiState.value as? MapUiState.Success)?.copy(selectedStopId = stopId) ?: return
+                    }
+                } else {
+                    _uiState.value = current.copy(selectedStopId = stopId)
+                }
+            }
+        }
+
+        /**
+         * Alterna el modo de navegación hacia la parada seleccionada.
+         */
+        fun toggleNavigationMode(targetBusStop: BusStop? = null) {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            if (current.isNavigationMode) {
+                stopNavigation()
+            } else {
+                val target =
+                    targetBusStop
+                        ?: current.selectedStopId?.let { id ->
+                            current.busStops.firstOrNull { it.stopId == id }
+                                ?: current.filteredStops.firstOrNull { it.stopId == id }
+                        }
+                        ?: return
+                startNavigation(target)
+            }
+        }
+
+        fun pauseNavigationSensors() {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            if (current.isNavigationMode) {
+                sensorRepository.stopOrientationUpdates()
+            }
+        }
+
+        fun resumeNavigationSensors() {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            if (current.isNavigationMode && current.isSensorAvailable) {
+                sensorRepository.startOrientationUpdates()
+            }
+        }
+
+        private fun startNavigation(targetStop: BusStop) {
+            val current = _uiState.value as? MapUiState.Success ?: return
+            val bearing = calculateDestinationDirection(current.center, targetStop.locationData).bearing.value
+            val sensorAvailable = checkOrientationSensorAvailability()
+
+            _uiState.value =
+                current.copy(
+                    isNavigationMode = true,
+                    selectedStopId = targetStop.stopId,
+                    navigationBearing = bearing,
+                    isSensorAvailable = sensorAvailable,
+                    deviceAzimuth = sensorRepository.orientationDegrees.value ?: 0f,
+                    navigationRoutePoints = null,
+                )
+
+            if (sensorAvailable) {
+                startNavigationSensors()
+            }
+
+            viewModelScope.launch {
+                val routeResult = getPedestrianRoute(current.center, targetStop.locationData)
+                val updatedCurrent = _uiState.value as? MapUiState.Success ?: return@launch
+                if (updatedCurrent.isNavigationMode && updatedCurrent.selectedStopId == targetStop.stopId) {
+                    _uiState.value =
+                        updatedCurrent.copy(
+                            navigationRoutePoints = routeResult.getOrNull()?.points,
+                        )
+                }
+            }
+        }
+
+        private fun stopNavigation() {
+            stopNavigationSensors()
+            val current = _uiState.value as? MapUiState.Success ?: return
+            _uiState.value =
+                current.copy(
+                    isNavigationMode = false,
+                    navigationRoutePoints = null,
+                    navigationBearing = null,
+                    deviceAzimuth = null,
+                )
+        }
+
+        private fun startNavigationSensors() {
+            sensorRepository.startOrientationUpdates()
+            orientationJob?.cancel()
+            orientationJob =
+                viewModelScope.launch {
+                    sensorRepository.orientationDegrees.collect { azimuth ->
+                        if (azimuth != null) {
+                            val current = _uiState.value as? MapUiState.Success ?: return@collect
+                            if (current.isNavigationMode) {
+                                _uiState.value = current.copy(deviceAzimuth = azimuth)
+                            }
+                        }
+                    }
+                }
+        }
+
+        private fun stopNavigationSensors() {
+            orientationJob?.cancel()
+            orientationJob = null
+            sensorRepository.stopOrientationUpdates()
         }
 
         private fun updateWithStops(
