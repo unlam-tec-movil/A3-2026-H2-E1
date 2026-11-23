@@ -1,4 +1,19 @@
 <resources>
     <string name="app_name">ScaffoldingAndroid3</string>
     <string name="add_photo_report">Agregar reporte</string>
+    <string name="photo_report_dialog_title">Registrar estado de la parada</string>
+    <string name="photo_report_select_category">Seleccioná una categoría:</string>
+    <string name="photo_report_category_obras">Obras</string>
+    <string name="photo_report_category_hard_to_find">Difíciles de encontrar</string>
+    <string name="photo_report_category_other">Otro</string>
+    <string name="photo_report_observation_label">Observación detallada</string>
+    <string name="photo_report_confirm">Confirmar</string>
+    <string name="photo_report_cancel">Cancelar</string>
+    <string name="photo_report_permission_denied_title">Permiso de cámara rechazado</string>
+    <string name="photo_report_permission_denied_message">Se necesita la cámara para registrar el estado de la parada.</string>
+    <string name="photo_report_understood">Entendido</string>
+    <string name="photo_report_saved_title">Reporte guardado</string>
+    <string name="photo_report_saved_message">La fotografía y la observación quedaron asociadas a la parada.</string>
+    <string name="photo_report_accept">Aceptar</string>
+    <string name="photo_report_unknown_category">Categoria desconocida</string>
 </resources>
