@@ -52,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -69,8 +68,8 @@ internal fun filterAndSortFavoriteStops(
     return stops
         .filter { stop ->
             search.isBlank() ||
-                stop.name.contains(search, ignoreCase = true) ||
-                stop.lines.contains(search, ignoreCase = true)
+                    stop.name.contains(search, ignoreCase = true) ||
+                    stop.lines.contains(search, ignoreCase = true)
         }.sortedWith(
             compareBy(String.CASE_INSENSITIVE_ORDER) { it.name },
         )
@@ -88,6 +87,8 @@ fun FavoriteBusStopsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+    val colors = MaterialTheme.colorScheme
+
     var searchQuery by rememberSaveable {
         mutableStateOf("")
     }
@@ -101,7 +102,7 @@ fun FavoriteBusStopsScreen(
         }
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = colors.background,
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         },
@@ -120,7 +121,7 @@ fun FavoriteBusStopsScreen(
                 Text(
                     text = "Mis paradas favoritas",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFF173B54),
+                    color = colors.onBackground,
                 )
 
                 AnimatedContent(
@@ -128,14 +129,14 @@ fun FavoriteBusStopsScreen(
                     modifier = Modifier.weight(1f),
                     transitionSpec = {
                         (
-                            fadeIn(animationSpec = tween(350)) +
-                                slideIntoContainer(
-                                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                                    animationSpec = tween(350),
-                                )
-                        ).togetherWith(
-                            fadeOut(animationSpec = tween(250)),
-                        )
+                                fadeIn(animationSpec = tween(350)) +
+                                        slideIntoContainer(
+                                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                                            animationSpec = tween(350),
+                                        )
+                                ).togetherWith(
+                                fadeOut(animationSpec = tween(250)),
+                            )
                     },
                     label = "FavoritesTransition",
                 ) { isEmpty ->
@@ -150,7 +151,9 @@ fun FavoriteBusStopsScreen(
                         ) {
                             OutlinedTextField(
                                 value = searchQuery,
-                                onValueChange = { searchQuery = it },
+                                onValueChange = {
+                                    searchQuery = it
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 label = {
                                     Text("Buscar favoritas")
@@ -167,7 +170,9 @@ fun FavoriteBusStopsScreen(
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(
-                                            onClick = { searchQuery = "" },
+                                            onClick = {
+                                                searchQuery = ""
+                                            },
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Filled.Close,
@@ -187,16 +192,16 @@ fun FavoriteBusStopsScreen(
                                         "${filteredFavorites.size} paradas encontradas"
                                     },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF466478),
+                                color = colors.onSurfaceVariant,
                             )
 
                             if (favorites.size < favoriteIds.size) {
                                 Text(
                                     text =
                                         "Algunas favoritas anteriores necesitan volver a guardarse " +
-                                            "desde el mapa para recuperar sus datos.",
+                                                "desde el mapa para recuperar sus datos.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF466478),
+                                    color = colors.onSurfaceVariant,
                                 )
                             }
 
@@ -205,7 +210,9 @@ fun FavoriteBusStopsScreen(
                                 searchQuery.isNotBlank()
                             ) {
                                 FavoriteSearchEmptyState(
-                                    onClearSearch = { searchQuery = "" },
+                                    onClearSearch = {
+                                        searchQuery = ""
+                                    },
                                 )
                             } else {
                                 LazyColumn(
@@ -225,7 +232,8 @@ fun FavoriteBusStopsScreen(
                                                     },
                                             colors =
                                                 CardDefaults.cardColors(
-                                                    containerColor = Color.White,
+                                                    containerColor = colors.surface,
+                                                    contentColor = colors.onSurface,
                                                 ),
                                             elevation =
                                                 CardDefaults.cardElevation(
@@ -246,19 +254,19 @@ fun FavoriteBusStopsScreen(
                                                     Text(
                                                         text = stop.name,
                                                         style = MaterialTheme.typography.titleMedium,
-                                                        color = Color(0xFF173B54),
+                                                        color = colors.onSurface,
                                                     )
 
                                                     Text(
                                                         text = stop.lines,
                                                         style = MaterialTheme.typography.bodyMedium,
-                                                        color = Color(0xFF466478),
+                                                        color = colors.onSurfaceVariant,
                                                     )
 
                                                     Text(
                                                         text = "Ver en el mapa",
                                                         style = MaterialTheme.typography.labelSmall,
-                                                        color = Color(0xFF357FA8),
+                                                        color = colors.primary,
                                                     )
                                                 }
 
@@ -289,7 +297,7 @@ fun FavoriteBusStopsScreen(
                                                     Icon(
                                                         imageVector = Icons.Filled.Favorite,
                                                         contentDescription = "Quitar de favoritos",
-                                                        tint = Color(0xFF5A9FC5),
+                                                        tint = colors.primary,
                                                     )
                                                 }
                                             }
@@ -307,6 +315,8 @@ fun FavoriteBusStopsScreen(
 
 @Composable
 private fun FavoriteEmptyState(onExploreMap: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -318,7 +328,8 @@ private fun FavoriteEmptyState(onExploreMap: () -> Unit) {
                     .padding(horizontal = 12.dp),
             colors =
                 CardDefaults.cardColors(
-                    containerColor = Color.White,
+                    containerColor = colors.surface,
+                    contentColor = colors.onSurface,
                 ),
             elevation =
                 CardDefaults.cardElevation(
@@ -336,21 +347,21 @@ private fun FavoriteEmptyState(onExploreMap: () -> Unit) {
                 Icon(
                     imageVector = Icons.Filled.Favorite,
                     contentDescription = null,
-                    tint = Color(0xFF5A9FC5),
+                    tint = colors.primary,
                     modifier = Modifier.size(56.dp),
                 )
 
                 Text(
                     text = "Todavía no agregaste paradas favoritas",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF173B54),
+                    color = colors.onSurface,
                     textAlign = TextAlign.Center,
                 )
 
                 Text(
                     text = "Explorá el mapa y guardá las paradas que usás con frecuencia para encontrarlas más rápido.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF647887),
+                    color = colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
 
@@ -366,11 +377,14 @@ private fun FavoriteEmptyState(onExploreMap: () -> Unit) {
 
 @Composable
 private fun FavoriteSearchEmptyState(onClearSearch: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors =
             CardDefaults.cardColors(
-                containerColor = Color.White,
+                containerColor = colors.surface,
+                contentColor = colors.onSurface,
             ),
     ) {
         Column(
@@ -384,19 +398,21 @@ private fun FavoriteSearchEmptyState(onClearSearch: () -> Unit) {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
-                tint = Color(0xFF5A9FC5),
+                tint = colors.primary,
                 modifier = Modifier.size(40.dp),
             )
 
             Text(
                 text = "No encontramos favoritas con esa búsqueda",
                 style = MaterialTheme.typography.titleMedium,
+                color = colors.onSurface,
                 textAlign = TextAlign.Center,
             )
 
             Text(
                 text = "Probá con otro nombre o número de línea.",
                 style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 
@@ -414,6 +430,8 @@ private fun FavoritesBackground(
     hasFavorites: Boolean,
     content: @Composable () -> Unit,
 ) {
+    val colors = MaterialTheme.colorScheme
+
     val circleSize by animateDpAsState(
         targetValue = if (hasFavorites) 110.dp else 260.dp,
         label = "CircleSize",
@@ -428,7 +446,7 @@ private fun FavoritesBackground(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF1F7FB)),
+                .background(colors.background),
     ) {
         Box(
             modifier =
@@ -438,7 +456,7 @@ private fun FavoritesBackground(
                     .size(circleSize)
                     .alpha(circleOpacity)
                     .background(
-                        color = Color(0xFFCCE6F4),
+                        color = colors.primaryContainer,
                         shape = CircleShape,
                     ),
         )
@@ -451,7 +469,7 @@ private fun FavoritesBackground(
                     .size(circleSize)
                     .alpha(circleOpacity)
                     .background(
-                        color = Color(0xFFD9EBF5),
+                        color = colors.secondaryContainer,
                         shape = CircleShape,
                     ),
         )
