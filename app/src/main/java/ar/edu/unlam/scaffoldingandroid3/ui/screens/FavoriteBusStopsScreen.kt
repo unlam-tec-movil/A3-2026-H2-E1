@@ -68,8 +68,8 @@ internal fun filterAndSortFavoriteStops(
     return stops
         .filter { stop ->
             search.isBlank() ||
-                    stop.name.contains(search, ignoreCase = true) ||
-                    stop.lines.contains(search, ignoreCase = true)
+                stop.name.contains(search, ignoreCase = true) ||
+                stop.lines.contains(search, ignoreCase = true)
         }.sortedWith(
             compareBy(String.CASE_INSENSITIVE_ORDER) { it.name },
         )
@@ -129,14 +129,14 @@ fun FavoriteBusStopsScreen(
                     modifier = Modifier.weight(1f),
                     transitionSpec = {
                         (
-                                fadeIn(animationSpec = tween(350)) +
-                                        slideIntoContainer(
-                                            towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                                            animationSpec = tween(350),
-                                        )
-                                ).togetherWith(
-                                fadeOut(animationSpec = tween(250)),
-                            )
+                            fadeIn(animationSpec = tween(350)) +
+                                slideIntoContainer(
+                                    towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                                    animationSpec = tween(350),
+                                )
+                        ).togetherWith(
+                            fadeOut(animationSpec = tween(250)),
+                        )
                     },
                     label = "FavoritesTransition",
                 ) { isEmpty ->
@@ -199,7 +199,7 @@ fun FavoriteBusStopsScreen(
                                 Text(
                                     text =
                                         "Algunas favoritas anteriores necesitan volver a guardarse " +
-                                                "desde el mapa para recuperar sus datos.",
+                                            "desde el mapa para recuperar sus datos.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.onSurfaceVariant,
                                 )
