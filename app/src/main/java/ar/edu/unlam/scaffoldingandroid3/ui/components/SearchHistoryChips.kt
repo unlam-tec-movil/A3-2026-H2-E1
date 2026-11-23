@@ -2,7 +2,6 @@ package ar.edu.unlam.scaffoldingandroid3.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchHistoryChips(
     searches: List<SearchHistory>,

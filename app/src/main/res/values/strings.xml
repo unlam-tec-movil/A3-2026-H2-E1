@@ -16,4 +16,15 @@
     <string name="photo_report_saved_message">La fotografía y la observación quedaron asociadas a la parada.</string>
     <string name="photo_report_accept">Aceptar</string>
     <string name="photo_report_unknown_category">Categoria desconocida</string>
+    <string name="compass_screen_title">Orientarme</string>
+    <string name="compass_back_description">Volver</string>
+    <string name="compass_unavailable">La brújula no está disponible en este dispositivo.</string>
+    <string name="compass_map_action">Ver parada en el mapa</string>
+    <string name="compass_permission_denied">Necesitamos tu ubicación para indicarte la dirección a la parada.</string>
+    <string name="compass_allow_location">Permitir ubicación</string>
+    <string name="compass_locating">Obteniendo tu ubicación…</string>
+    <string name="compass_location_unavailable">No pudimos obtener tu ubicación.</string>
+    <string name="compass_retry">Reintentar</string>
+    <string name="compass_distance_label">Distancia en línea recta: %d m</string>
+    <string name="compass_arrow_description">Dirección a la parada</string>
 </resources>
