@@ -27,4 +27,8 @@
     <string name="compass_retry">Reintentar</string>
     <string name="compass_distance_label">Distancia en línea recta: %d m</string>
     <string name="compass_arrow_description">Dirección a la parada</string>
+    <string name="favorite_empty_icon_description">Icono de corazon para paradas favoritas</string>
+    <string name="favorite_empty_title">Todavía no agregaste paradas favoritas</string>
+    <string name="favorite_empty_description">Explorá el mapa y guardá las paradas que usás con frecuencia para encontrarlas más rápido.</string>
+    <string name="favorite_empty_button">Explorar mapa</string>
 </resources>
