@@ -4,6 +4,7 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
 import ar.edu.unlam.scaffoldingandroid3.domain.model.toFavoriteSnapshot
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.FavoriteBusStopRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,6 +42,12 @@ class FavoriteBusStopsViewModel
         fun removeFavorite(stopId: Long) {
             viewModelScope.launch {
                 repository.removeFavorite(stopId)
+            }
+        }
+
+        fun restoreFavorite(stop: FavoriteStopSnapshot) {
+            viewModelScope.launch {
+                repository.addFavorite(stop)
             }
         }
 

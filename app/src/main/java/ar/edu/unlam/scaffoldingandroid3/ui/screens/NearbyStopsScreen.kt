@@ -1,3 +1,4 @@
+
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.Manifest
@@ -43,9 +44,11 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +92,13 @@ import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.PhotoReportViewModel
 import kotlinx.coroutines.launch
 
+internal fun favoriteActionMessage(wasFavorite: Boolean): String =
+    if (wasFavorite) {
+        "Parada eliminada de favoritas"
+    } else {
+        "Parada agregada a favoritas"
+    }
+
 @Composable
 fun NearbyStopsScreen(
     viewModel: MapViewModel = hiltViewModel(),
@@ -99,6 +109,8 @@ fun NearbyStopsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
     val favoriteIds by favoriteViewModel.favoriteStopIds.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
 
     var selectedTab by rememberSaveable {
         mutableStateOf(HomeTab.Map)
@@ -156,6 +168,9 @@ fun NearbyStopsScreen(
     }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         bottomBar = {
             HomeBottomBar(
                 selectedTab = selectedTab,
@@ -258,7 +273,9 @@ fun NearbyStopsScreen(
                                 },
                                 onClusterClick = { clusterStops ->
                                     selectedFavorite = null
-                                    viewModel.filterByCluster(clusterStops.map { it.stopId }.toSet())
+                                    viewModel.filterByCluster(
+                                        clusterStops.map { it.stopId }.toSet(),
+                                    )
                                 },
                                 onClearClusterFilter = {
                                     viewModel.clearClusterFilter()
@@ -272,7 +289,18 @@ fun NearbyStopsScreen(
                                         }
 
                                     if (stop != null) {
+                                        val wasFavorite = stopId in favoriteIds
+
                                         favoriteViewModel.toggleFavorite(stop)
+
+                                        snackbarScope.launch {
+                                            snackbarHostState.currentSnackbarData?.dismiss()
+
+                                            snackbarHostState.showSnackbar(
+                                                message = favoriteActionMessage(wasFavorite),
+                                                duration = SnackbarDuration.Short,
+                                            )
+                                        }
                                     }
                                 },
                                 selectedFavorite = selectedFavorite,
@@ -297,6 +325,10 @@ fun NearbyStopsScreen(
                             viewModel.selectBusStop(stop.stopId)
                             selectedTab = HomeTab.Map
                         },
+                        onExploreMap = {
+                            selectedTab = HomeTab.Map
+                        },
+                        viewModel = favoriteViewModel,
                     )
                 }
             }
@@ -498,7 +530,11 @@ private fun NearbyStopsContent(
 
     LaunchedEffect(state.selectedStopId) {
         if (state.selectedStopId != null) {
-            val index = state.filteredStops.indexOfFirst { it.stopId == state.selectedStopId }
+            val index =
+                state.filteredStops.indexOfFirst {
+                    it.stopId == state.selectedStopId
+                }
+
             if (index >= 0) {
                 listState.animateScrollToItem(index)
             }
@@ -557,27 +593,33 @@ private fun NearbyStopsContent(
                         }
                     }
 
-                    Row(
+                    Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 8.dp,
+                                ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = "Paradas cerca de vos",
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
                         )
+
                         if (selectedForReport != null) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(
+                                Button(
                                     onClick = {
                                         onOrientClick(selectedForReport)
                                     },
+                                    modifier = Modifier.weight(1f),
                                 ) {
                                     Text("Orientarme")
                                 }
@@ -599,13 +641,19 @@ private fun NearbyStopsContent(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    .padding(
+                                        horizontal = 16.dp,
+                                        vertical = 4.dp,
+                                    ),
                         ) {
                             Row(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        .padding(
+                                            horizontal = 12.dp,
+                                            vertical = 6.dp,
+                                        ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
@@ -615,6 +663,7 @@ private fun NearbyStopsContent(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.Medium,
                                 )
+
                                 IconButton(
                                     onClick = onClearClusterFilter,
                                     modifier = Modifier.size(24.dp),
@@ -702,12 +751,14 @@ private fun NearbyStopsContent(
                 userFocusTrigger = userFocusTrigger,
                 onStopClick = { stop ->
                     onStopClick(stop)
+
                     coroutineScope.launch {
                         scaffoldState.bottomSheetState.expand()
                     }
                 },
                 onClusterClick = { clusterStops ->
                     onClusterClick(clusterStops)
+
                     coroutineScope.launch {
                         scaffoldState.bottomSheetState.expand()
                     }
@@ -716,7 +767,10 @@ private fun NearbyStopsContent(
             )
 
             Column(
-                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
             ) {
                 HomeHeader(
                     query = query,
@@ -729,7 +783,10 @@ private fun NearbyStopsContent(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(end = 16.dp, top = 12.dp),
+                            .padding(
+                                end = 16.dp,
+                                top = 12.dp,
+                            ),
                 ) {
                     FloatingActionButton(
                         onClick = {
