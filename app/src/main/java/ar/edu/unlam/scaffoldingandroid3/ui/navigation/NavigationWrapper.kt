@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import ar.edu.unlam.scaffoldingandroid3.ui.screens.CompassScreen
 import ar.edu.unlam.scaffoldingandroid3.ui.screens.NearbyStopsScreen
 import kotlinx.serialization.Serializable
 
@@ -24,23 +23,7 @@ fun NavigationWrapper() {
         startDestination = MapDestination,
     ) {
         composable<MapDestination> {
-            NearbyStopsScreen(
-                onNavigateToCompass = { stop ->
-                    navController.navigate(
-                        Compass(
-                            stopName = stop.name,
-                            latitude = stop.locationData.latitude.value,
-                            longitude = stop.locationData.longitude.value,
-                        ),
-                    )
-                },
-            )
-        }
-
-        composable<Compass> {
-            CompassScreen(
-                onBack = { navController.popBackStack() },
-            )
+            NearbyStopsScreen()
         }
     }
 }

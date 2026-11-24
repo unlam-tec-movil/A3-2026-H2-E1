@@ -37,6 +37,7 @@ import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+import org.osmdroid.views.overlay.Polyline
 import android.graphics.Color as AndroidColor
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
@@ -53,6 +54,8 @@ fun OsmMapView(
     onClusterClick: (List<BusStop>) -> Unit = {},
     focusTrigger: Int = 0,
     userFocusTrigger: Int = 0,
+    routePoints: List<LocationData>? = null,
+    isNavigationMode: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -63,6 +66,8 @@ fun OsmMapView(
     val currentUserLocation by rememberUpdatedState(userLocation)
     val currentOnStopClick by rememberUpdatedState(onStopClick)
     val currentOnClusterClick by rememberUpdatedState(onClusterClick)
+    val currentRoutePoints by rememberUpdatedState(routePoints)
+    val currentIsNavigationMode by rememberUpdatedState(isNavigationMode)
 
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
     val fillColor =
@@ -125,6 +130,60 @@ fun OsmMapView(
         val userOsmPoint = OsmGeoPoint(currentUserLocation.latitude.value, currentUserLocation.longitude.value)
 
         map.overlays.clear()
+
+        if (currentIsNavigationMode) {
+            val points = currentRoutePoints
+            if (points != null && points.size >= 2) {
+                val polyline =
+                    Polyline(map).apply {
+                        val geoPoints =
+                            points.map { OsmGeoPoint(it.latitude.value, it.longitude.value) }
+                        setPoints(geoPoints)
+                        outlinePaint.color = primaryColor
+                        outlinePaint.strokeWidth = 14f
+                        outlinePaint.strokeCap = Paint.Cap.ROUND
+                        outlinePaint.strokeJoin = Paint.Join.ROUND
+                        infoWindow = null
+                    }
+                map.overlays.add(polyline)
+            }
+
+            val userMarker =
+                Marker(map).apply {
+                    position = userOsmPoint
+                    title = "Tu ubicación"
+                    icon = userRedIconDrawable
+                    infoWindow = null
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                }
+            map.overlays.add(userMarker)
+
+            val selectedStop = currentStops.firstOrNull { it.stopId == currentSelectedStopId }
+            if (selectedStop != null) {
+                val stopPoint =
+                    OsmGeoPoint(
+                        selectedStop.locationData.latitude.value,
+                        selectedStop.locationData.longitude.value,
+                    )
+                val stopMarker =
+                    Marker(map).apply {
+                        position = stopPoint
+                        title = selectedStop.name
+                        snippet = selectedStop.busLines.joinToString(" · ") { "Línea ${it.number}" }
+                        icon = selectedBlueIconDrawable
+                        infoWindow = null
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        setOnMarkerClickListener { _, _ ->
+                            currentOnStopClick(selectedStop)
+                            true
+                        }
+                    }
+                map.overlays.add(stopMarker)
+            }
+
+            map.postInvalidate()
+            return
+        }
 
         // Radio de 1000m alrededor del usuario (Círculo Polygon)
         val circleOverlay =
@@ -249,6 +308,10 @@ fun OsmMapView(
             val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
             mapView.controller.animateTo(userOsmPoint, 17.0, 1000L)
         }
+    }
+
+    LaunchedEffect(isNavigationMode, routePoints) {
+        refreshOverlays(mapView)
     }
 
     DisposableEffect(lifecycleOwner) {

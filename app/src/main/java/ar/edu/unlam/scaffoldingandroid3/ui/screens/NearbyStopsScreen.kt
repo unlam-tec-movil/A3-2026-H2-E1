@@ -5,8 +5,16 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +36,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
@@ -44,6 +53,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -51,6 +61,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,6 +85,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
@@ -82,6 +96,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
+import ar.edu.unlam.scaffoldingandroid3.ui.components.MiniCompass
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
@@ -102,7 +117,6 @@ internal fun favoriteActionMessage(wasFavorite: Boolean): String =
 @Composable
 fun NearbyStopsScreen(
     viewModel: MapViewModel = hiltViewModel(),
-    onNavigateToCompass: (BusStop) -> Unit = {},
     favoriteViewModel: FavoriteBusStopsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -167,17 +181,40 @@ fun NearbyStopsScreen(
         resolveLocationPermission()
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> viewModel.pauseNavigationSensors()
+                    Lifecycle.Event.ON_RESUME -> viewModel.resumeNavigationSensors()
+                    else -> {}
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val isNavigationActive = (uiState as? MapUiState.Success)?.isNavigationMode == true
+    BackHandler(enabled = isNavigationActive) {
+        viewModel.toggleNavigationMode()
+    }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         },
         bottomBar = {
-            HomeBottomBar(
-                selectedTab = selectedTab,
-                onTabSelected = {
-                    selectedTab = it
-                },
-            )
+            if (!isNavigationActive) {
+                HomeBottomBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = {
+                        selectedTab = it
+                    },
+                )
+            }
         },
     ) { padding ->
         Box(
@@ -280,7 +317,9 @@ fun NearbyStopsScreen(
                                 onClearClusterFilter = {
                                     viewModel.clearClusterFilter()
                                 },
-                                onOrientClick = onNavigateToCompass,
+                                onToggleNavigation = { stop ->
+                                    viewModel.toggleNavigationMode(stop)
+                                },
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
                                     val stop =
@@ -469,12 +508,12 @@ private fun NearbyStopsContent(
     onSearchSubmitted: (String) -> Unit,
     recentSearches: List<SearchHistory>,
     onStopClick: (BusStop) -> Unit,
-    onOrientClick: (BusStop) -> Unit,
     favoriteIds: Set<Long>,
     onToggleFavorite: (Long) -> Unit,
     onClusterClick: (List<BusStop>) -> Unit = {},
     onClearClusterFilter: () -> Unit = {},
     selectedFavorite: FavoriteStopSnapshot? = null,
+    onToggleNavigation: (BusStop?) -> Unit = {},
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
     val coroutineScope = rememberCoroutineScope()
@@ -543,192 +582,185 @@ private fun NearbyStopsContent(
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetPeekHeight = 50.dp,
+        sheetPeekHeight = if (state.isNavigationMode) 0.dp else 50.dp,
         containerColor = Color.Transparent,
         sheetContainerColor = MaterialTheme.colorScheme.surface,
         sheetContent = {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.5f),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
+            if (!state.isNavigationMode) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.5f),
                 ) {
-                    if (state.isApproximate) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "Ubicación aproximada. Las distancias pueden ser imprecisas.",
-                                modifier = Modifier.padding(8.dp),
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-
-                    if (state.isFromCache) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "Sin conexión. Mostrando paradas guardadas en caché.",
-                                modifier = Modifier.padding(8.dp),
-                            )
-                        }
-                    }
-
-                    if (state.isDemo) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
-                                modifier = Modifier.padding(8.dp),
-                            )
-                        }
-                    }
-
                     Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    horizontal = 16.dp,
-                                    vertical = 8.dp,
-                                ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize(),
                     ) {
-                        Text(
-                            text = "Paradas cerca de vos",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-
-                        if (selectedForReport != null) {
-                            Row(
+                        if (state.isApproximate) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Button(
-                                    onClick = {
-                                        onOrientClick(selectedForReport)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Text("Orientarme")
-                                }
-
-                                PhotoReportCameraButton(
-                                    stopId = selectedForReport.stopId,
-                                    onPhotoTaken = photoReportViewModel::onPhotoTaken,
-                                    onPermissionDenied = photoReportViewModel::onPermissionDenied,
-                                    onCancelled = photoReportViewModel::onCancelled,
+                                Text(
+                                    text = "Ubicación aproximada. Las distancias pueden ser imprecisas.",
+                                    modifier = Modifier.padding(8.dp),
+                                    textAlign = TextAlign.Center,
                                 )
                             }
                         }
-                    }
 
-                    if (state.clusterFilterStopIds != null) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = MaterialTheme.shapes.small,
+                        if (state.isFromCache) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    text = "Sin conexión. Mostrando paradas guardadas en caché.",
+                                    modifier = Modifier.padding(8.dp),
+                                )
+                            }
+                        }
+
+                        if (state.isDemo) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
+                                    modifier = Modifier.padding(8.dp),
+                                )
+                            }
+                        }
+
+                        Column(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(
                                         horizontal = 16.dp,
-                                        vertical = 4.dp,
+                                        vertical = 8.dp,
                                     ),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(
-                                            horizontal = 12.dp,
-                                            vertical = 6.dp,
-                                        ),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text = "Grupo de ${state.filteredStops.size} paradas",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Medium,
-                                )
+                            Text(
+                                text = "Paradas cerca de vos",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
 
-                                IconButton(
-                                    onClick = onClearClusterFilter,
-                                    modifier = Modifier.size(24.dp),
+                            if (selectedForReport != null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Close,
-                                        contentDescription = "Quitar filtro de grupo",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(16.dp),
+                                    PhotoReportCameraButton(
+                                        stopId = selectedForReport.stopId,
+                                        onPhotoTaken = photoReportViewModel::onPhotoTaken,
+                                        onPermissionDenied = photoReportViewModel::onPermissionDenied,
+                                        onCancelled = photoReportViewModel::onCancelled,
                                     )
                                 }
                             }
                         }
-                    }
 
-                    when {
-                        state.busStops.isEmpty() -> {
-                            Text(
-                                text = "No hay paradas cerca de tu ubicación.",
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        }
-
-                        state.filteredStops.isEmpty() -> {
-                            Text(
-                                text = "No encontramos paradas con esa búsqueda.",
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        }
-
-                        else -> {
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.weight(1f),
-                                contentPadding =
-                                    PaddingValues(
-                                        horizontal = 16.dp,
-                                        vertical = 4.dp,
-                                    ),
-                                verticalArrangement =
-                                    Arrangement.spacedBy(8.dp),
+                        if (state.clusterFilterStopIds != null) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = MaterialTheme.shapes.small,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(
+                                            horizontal = 16.dp,
+                                            vertical = 4.dp,
+                                        ),
                             ) {
-                                items(
-                                    items = state.filteredStops,
-                                    key = {
-                                        it.stopId
-                                    },
-                                ) { stop ->
-                                    BusStopCard(
-                                        stop = stop,
-                                        distanceMeters =
-                                            state.center.distanceMetersTo(
-                                                stop.locationData,
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                horizontal = 12.dp,
+                                                vertical = 6.dp,
                                             ),
-                                        selected =
-                                            stop.stopId == state.selectedStopId,
-                                        onClick = {
-                                            onStopClick(stop)
-                                        },
-                                        isFavorite =
-                                            stop.stopId in favoriteIds,
-                                        onFavoriteClick = {
-                                            onToggleFavorite(stop.stopId)
-                                        },
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        text = "Grupo de ${state.filteredStops.size} paradas",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontWeight = FontWeight.Medium,
                                     )
+
+                                    IconButton(
+                                        onClick = onClearClusterFilter,
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Quitar filtro de grupo",
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        when {
+                            state.busStops.isEmpty() -> {
+                                Text(
+                                    text = "No hay paradas cerca de tu ubicación.",
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+
+                            state.filteredStops.isEmpty() -> {
+                                Text(
+                                    text = "No encontramos paradas con esa búsqueda.",
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+
+                            else -> {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding =
+                                        PaddingValues(
+                                            horizontal = 16.dp,
+                                            vertical = 4.dp,
+                                        ),
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(8.dp),
+                                ) {
+                                    items(
+                                        items = state.filteredStops,
+                                        key = {
+                                            it.stopId
+                                        },
+                                    ) { stop ->
+                                        BusStopCard(
+                                            stop = stop,
+                                            distanceMeters =
+                                                state.center.distanceMetersTo(
+                                                    stop.locationData,
+                                                ),
+                                            selected =
+                                                stop.stopId == state.selectedStopId,
+                                            onClick = {
+                                                onStopClick(stop)
+                                            },
+                                            isFavorite =
+                                                stop.stopId in favoriteIds,
+                                            onFavoriteClick = {
+                                                onToggleFavorite(stop.stopId)
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -749,6 +781,8 @@ private fun NearbyStopsContent(
                 selectedStopId = state.selectedStopId,
                 selectedClusterStopIds = state.clusterFilterStopIds,
                 userFocusTrigger = userFocusTrigger,
+                routePoints = state.navigationRoutePoints,
+                isNavigationMode = state.isNavigationMode,
                 onStopClick = { stop ->
                     onStopClick(stop)
 
@@ -766,18 +800,40 @@ private fun NearbyStopsContent(
                 modifier = Modifier.fillMaxSize(),
             )
 
+            AnimatedVisibility(
+                visible = state.isNavigationMode && state.navigationBearing != null,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, top = 16.dp),
+            ) {
+                MiniCompass(
+                    targetBearing = state.navigationBearing ?: 0.0,
+                    deviceAzimuth = state.deviceAzimuth ?: 0f,
+                )
+            }
+
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter),
             ) {
-                HomeHeader(
-                    query = query,
-                    onQueryChange = onQueryChange,
-                    onSearchSubmitted = handleSearchSubmitted,
-                    recentSearches = recentSearches,
-                )
+                AnimatedVisibility(
+                    visible = !state.isNavigationMode,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    HomeHeader(
+                        query = query,
+                        onQueryChange = onQueryChange,
+                        onSearchSubmitted = handleSearchSubmitted,
+                        recentSearches = recentSearches,
+                    )
+                }
 
                 Box(
                     modifier =
@@ -788,18 +844,62 @@ private fun NearbyStopsContent(
                                 top = 12.dp,
                             ),
                 ) {
-                    FloatingActionButton(
-                        onClick = {
-                            userFocusTrigger++
-                        },
+                    Column(
                         modifier = Modifier.align(Alignment.TopEnd),
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary,
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Place,
-                            contentDescription = "Centrar en mi ubicación",
-                        )
+                        FloatingActionButton(
+                            onClick = {
+                                userFocusTrigger++
+                            },
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Place,
+                                contentDescription = "Centrar en mi ubicación",
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = state.selectedStopId != null,
+                            enter = fadeIn() + scaleIn(),
+                            exit = fadeOut() + scaleOut(),
+                        ) {
+                            SmallFloatingActionButton(
+                                onClick = {
+                                    onToggleNavigation(selectedForReport)
+                                },
+                                containerColor =
+                                    if (state.isNavigationMode) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.surface
+                                    },
+                                contentColor =
+                                    if (state.isNavigationMode) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    },
+                            ) {
+                                Icon(
+                                    imageVector =
+                                        if (state.isNavigationMode) {
+                                            Icons.Filled.Close
+                                        } else {
+                                            Icons.Filled.NearMe
+                                        },
+                                    contentDescription =
+                                        if (state.isNavigationMode) {
+                                            "Detener navegación"
+                                        } else {
+                                            "Orientarme hacia la parada"
+                                        },
+                                )
+                            }
+                        }
                     }
                 }
             }

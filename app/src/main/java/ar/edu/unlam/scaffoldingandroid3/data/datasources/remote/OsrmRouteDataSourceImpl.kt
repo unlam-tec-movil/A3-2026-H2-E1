@@ -51,7 +51,7 @@ class OsrmRouteDataSourceImpl
                 val urlString =
                     String.format(
                         Locale.US,
-                        "$BASE_URL/route/v1/foot/%.6f,%.6f;%.6f,%.6f?overview=full&geometries=geojson",
+                        "$BASE_URL/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=full&geometries=geojson",
                         origin.longitude.value,
                         origin.latitude.value,
                         destination.longitude.value,
@@ -113,7 +113,7 @@ class OsrmRouteDataSourceImpl
         }
 
         companion object {
-            private const val BASE_URL = "https://router.project-osrm.org"
+            private const val BASE_URL = "https://routing.openstreetmap.de/routed-foot"
             private const val TIMEOUT_MILLIS = 8_000
         }
     }
