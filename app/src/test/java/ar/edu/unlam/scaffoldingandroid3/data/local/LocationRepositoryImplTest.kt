@@ -6,7 +6,9 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -59,5 +61,18 @@ class LocationRepositoryImplTest {
             coEvery { mockDataSource.isLocationEnabled() } returns false
 
             assertFalse(repository.isLocationEnabled())
+        }
+
+    @Test
+    @DisplayName("Debería delegar la obtención de flujo de ubicaciones en tiempo real al data source")
+    fun shouldDelegateGetLocationUpdatesToDataSource() =
+        runTest {
+            val expectedLocation = LocationData(Latitude(-34.6037), Longitude(-58.3816))
+            every { mockDataSource.getLocationUpdates(any(), any()) } returns flowOf(expectedLocation)
+
+            val flow = repository.getLocationUpdates()
+            flow.collect { location ->
+                assertEquals(expectedLocation, location)
+            }
         }
 }

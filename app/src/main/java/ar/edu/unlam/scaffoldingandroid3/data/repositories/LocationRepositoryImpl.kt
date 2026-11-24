@@ -3,6 +3,7 @@ package ar.edu.unlam.scaffoldingandroid3.data.repositories
 import ar.edu.unlam.scaffoldingandroid3.data.datasources.local.LocationDataSource
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /**
@@ -39,6 +40,11 @@ class LocationRepositoryImpl
          * @see LocationRepository.getLocationData()
          */
         override suspend fun getLocationData(): LocationData? = dataSource.getLastKnowLocation()
+
+        override fun getLocationUpdates(
+            intervalMillis: Long,
+            minDistanceMeters: Float,
+        ): Flow<LocationData> = dataSource.getLocationUpdates(intervalMillis, minDistanceMeters)
 
         /**
          * Verifica si el servicio de ubicación está habilitado en el dispositivo.

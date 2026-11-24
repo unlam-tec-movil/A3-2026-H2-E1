@@ -26,6 +26,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -56,6 +57,7 @@ class MapExploreViewModelTest {
         every { busStopRepository.getRecentSearches() } returns flowOf(emptyList())
         every { checkOrientationSensorAvailability() } returns true
         every { sensorRepository.orientationDegrees } returns orientationFlow
+        every { repository.getLocationUpdates(any(), any()) } returns emptyFlow()
         every { calculateDestinationDirection(any(), any()) } returns BearingData(Bearing(90.0))
         coEvery { getPedestrianRoute(any(), any()) } returns Result.success(PedestrianRoute(emptyList()))
         return MapViewModel(

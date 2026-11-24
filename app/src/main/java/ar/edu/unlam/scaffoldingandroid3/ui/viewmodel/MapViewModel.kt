@@ -70,9 +70,11 @@ class MapViewModel
         private var currentQuery = ""
         private var clusterFilterStopIds: Set<Long>? = null
         private var orientationJob: Job? = null
+        private var locationUpdatesJob: Job? = null
 
         override fun onCleared() {
             stopNavigationSensors()
+            stopLocationTracking()
         }
 
         /**
@@ -98,6 +100,7 @@ class MapViewModel
          * Si no hay una ubicación conocida dentro del timeout → [MapUiState.LocationUnavailable].
          */
         fun loadUserLocationAndStops(isApproximate: Boolean = false) {
+            stopLocationTracking()
             viewModelScope.launch {
                 stopNavigationSensors()
                 _uiState.value = MapUiState.Loading
@@ -115,6 +118,8 @@ class MapViewModel
                     }
 
                     updateWithStops(location, getNearbyStops(location), isApproximate)
+
+                    startLocationTracking()
                 } catch (e: SecurityException) {
                     _uiState.value = MapUiState.Error(e.message ?: LOCATION_ERROR)
                 } catch (_: Exception) {
@@ -125,6 +130,7 @@ class MapViewModel
 
         /** Carga las paradas alrededor de un punto fijo, sin usar la ubicación del pasajero. */
         fun exploreManually() {
+            stopLocationTracking()
             viewModelScope.launch {
                 stopNavigationSensors()
                 _uiState.value = MapUiState.Loading
@@ -138,6 +144,46 @@ class MapViewModel
                     _uiState.value = MapUiState.Error(UNKNOWN_ERROR)
                 }
             }
+        }
+
+        private fun startLocationTracking() {
+            stopLocationTracking()
+            locationUpdatesJob =
+                viewModelScope.launch {
+                    try {
+                        locationRepository.getLocationUpdates().collect { newLocation ->
+                            onLocationUpdated(newLocation)
+                        }
+                    } catch (_: Exception) {
+                        // Ignorar fallos temporales del sensor GPS
+                    }
+                }
+        }
+
+        private fun stopLocationTracking() {
+            locationUpdatesJob?.cancel()
+            locationUpdatesJob = null
+        }
+
+        private fun onLocationUpdated(newLocation: LocationData) {
+            val current = _uiState.value as? MapUiState.Success ?: return
+
+            val updatedBearing =
+                if (current.isNavigationMode && current.selectedStopId != null) {
+                    val targetStop =
+                        current.busStops.firstOrNull { it.stopId == current.selectedStopId }
+                            ?: current.filteredStops.firstOrNull { it.stopId == current.selectedStopId }
+                    targetStop?.let { calculateDestinationDirection(newLocation, it.locationData).bearing.value }
+                        ?: current.navigationBearing
+                } else {
+                    current.navigationBearing
+                }
+
+            _uiState.value =
+                current.copy(
+                    center = newLocation,
+                    navigationBearing = updatedBearing,
+                )
         }
 
         /** Filtra las paradas del estado actual mientras el pasajero escribe. */

@@ -1,6 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Interfaz de fuente de datos para obtener información de ubicación del dispositivo.
@@ -10,6 +11,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
  *
  * **Funcionalidad**:
  * - Obtiene los datos de ubicación más recientes del dispositivo
+ * - Mantiene una suscripción continua para recibir actualizaciones de ubicación en tiempo real
  * - Verifica si el servicio de ubicación está habilitado
  *
  * **Uso**: Esta interfaz es implementada por [LocationDataSourceImpl] para proporcionar
@@ -34,6 +36,14 @@ interface LocationDataSource {
      * @see LocationData
      */
     suspend fun getLastKnowLocation(): LocationData?
+
+    /**
+     * Proporciona un flujo continuo de actualizaciones de ubicación en tiempo real.
+     */
+    fun getLocationUpdates(
+        intervalMillis: Long = 3_000L,
+        minDistanceMeters: Float = 3f,
+    ): Flow<LocationData>
 
     /**
      * Verifica si el servicio de ubicación está habilitado en el dispositivo.
