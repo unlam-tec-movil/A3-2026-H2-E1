@@ -1,6 +1,10 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
 import android.net.Uri
+import ar.edu.unlam.scaffoldingandroid3.ui.dataclass.PhotoFile
+import ar.edu.unlam.scaffoldingandroid3.ui.helper.CameraPermissionChecker
+import ar.edu.unlam.scaffoldingandroid3.ui.helper.CameraPhotoLauncher
+import ar.edu.unlam.scaffoldingandroid3.ui.helper.PhotoFileFactory
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -9,55 +13,60 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.jupiter.api.DisplayName
 import java.io.File
 
 class CameraPhotoLauncherTest {
     private val uri = mockk<Uri>(relaxed = true)
-    private val file = File("report.jpg")
+    private val file = File(PHOTO_FILE_NAME)
     private val permission = FakePermissionChecker()
     private val files = FakePhotoFileFactory()
     private val launcher = CameraPhotoLauncher(permission, files)
 
     init {
-        every { uri.toString() } returns "content://photo/1"
+        every { uri.toString() } returns PHOTO_CONTENT_URI
         files.photoFile = PhotoFile(file, uri)
     }
 
     @Test
-    fun `when a capture succeeds, then the content uri and the stop id at launch time are reported`() {
-        var currentStopId = 42L
+    @DisplayName("Cuando una captura tiene éxito, el URI de contenido y el ID de parada en el momento del lanzamiento deben ser reportados")
+    fun whenCaptureSucceedsThenContentUriAndStopIdAtLaunchTimeAreReported() {
+        var currentStopId = STOP_ID
         val launchedUri = launcher.prepare(currentStopId)
-        currentStopId = 99L
+        currentStopId = UPDATED_STOP_ID
 
         assertSame(uri, launchedUri)
-        assertEquals(99L, currentStopId)
+        assertEquals(UPDATED_STOP_ID, currentStopId)
         assertEquals(
-            PhotoCaptureResult.Taken("content://photo/1", 42L),
+            PhotoCaptureResult.Taken(PHOTO_CONTENT_URI, STOP_ID),
             launcher.consumeResult(true),
         )
         assertTrue(files.deleted.isEmpty())
     }
 
     @Test
-    fun `when a capture is cancelled, then the pending file is deleted`() {
-        launcher.prepare(42L)
+    @DisplayName("Cuando una captura es cancelada, el archivo pendiente debe ser eliminado")
+    fun whenCaptureIsCancelledThenPendingFileIsDeleted() {
+        launcher.prepare(STOP_ID)
 
         assertEquals(PhotoCaptureResult.Cancelled, launcher.consumeResult(false))
         assertEquals(listOf(file), files.deleted)
     }
 
     @Test
-    fun `when the photo file cannot be created, then there is no capture to launch`() {
+    @DisplayName("Cuando no se puede crear el archivo de foto, no debe haber captura para lanzar")
+    fun whenPhotoFileCannotBeCreatedThenNoCaptureToLaunch() {
         files.photoFile = null
 
-        assertNull(launcher.prepare(42L))
+        assertNull(launcher.prepare(STOP_ID))
         assertEquals(PhotoCaptureResult.Cancelled, launcher.consumeResult(true))
         assertTrue(files.deleted.isEmpty())
     }
 
     @Test
-    fun `when a pending capture is discarded, then its file is deleted and the result is ignored`() {
-        launcher.prepare(42L)
+    @DisplayName("Cuando una captura pendiente se descarta, su archivo debe ser eliminado y el resultado debe ser ignorado")
+    fun whenPendingCaptureIsDiscardedThenItsFileIsDeletedAndResultIsIgnored() {
+        launcher.prepare(STOP_ID)
 
         launcher.discardPending()
 
@@ -66,7 +75,8 @@ class CameraPhotoLauncherTest {
     }
 
     @Test
-    fun `when checking the camera permission, then the checker result is returned`() {
+    @DisplayName("Cuando se verifica el permiso de cámara, el resultado del verificador debe ser devuelto")
+    fun whenCameraPermissionIsCheckedThenCheckerResultIsReturned() {
         permission.granted = false
         assertFalse(launcher.isPermissionGranted())
 
@@ -89,5 +99,12 @@ class CameraPhotoLauncherTest {
         override fun delete(file: File) {
             deleted += file
         }
+    }
+
+    private companion object {
+        const val PHOTO_FILE_NAME = "report.jpg"
+        const val PHOTO_CONTENT_URI = "content://photo/1"
+        const val STOP_ID = 42L
+        const val UPDATED_STOP_ID = 99L
     }
 }
