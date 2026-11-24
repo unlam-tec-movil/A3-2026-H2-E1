@@ -47,7 +47,7 @@ fun SplashScreen(onAnimationFinished: () -> Unit) {
     val busOpacity = remember { Animatable(0f) }
     val textOpacity = remember { Animatable(0f) }
 
-    SplashScreenAnimation(busScale, busOpacity, textOpacity, onAnimationFinished())
+    SplashScreenAnimation(busScale, busOpacity, textOpacity, onAnimationFinished)
     SplashScreenContent(busScale, busOpacity, textOpacity)
 }
 
@@ -56,7 +56,7 @@ fun SplashScreenAnimation(
     busScale: Animatable<Float, AnimationVector1D>,
     busOpacity: Animatable<Float, AnimationVector1D>,
     textOpacity: Animatable<Float, AnimationVector1D>,
-    onAnimationFinished: Unit,
+    onAnimationFinished: () -> Unit,
 ) {
     LaunchedEffect(Unit) {
         launch {
@@ -82,7 +82,7 @@ fun SplashScreenAnimation(
 
         delay(FINISH_DELAY_MS.milliseconds)
 
-        onAnimationFinished.run { }
+        onAnimationFinished()
     }
 }
 
