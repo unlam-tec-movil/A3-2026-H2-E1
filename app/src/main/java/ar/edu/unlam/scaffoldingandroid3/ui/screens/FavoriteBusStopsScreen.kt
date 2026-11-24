@@ -112,7 +112,7 @@ fun FavoriteBusStopsScreen(
                     },
                     label = "FavoritesTransition",
                 ) { isEmpty ->
-                    if (!isEmpty) {
+                    if (isEmpty) {
                         FavoriteEmptyState(
                             onExploreMap = onExploreMap,
                         )

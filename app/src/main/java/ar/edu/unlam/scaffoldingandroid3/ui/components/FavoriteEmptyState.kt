@@ -1,6 +1,5 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
-import ar.edu.unlam.scaffoldingandroid3.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import ar.edu.unlam.scaffoldingandroid3.R
 
 @Composable
 fun FavoriteEmptyState(onExploreMap: () -> Unit) {
