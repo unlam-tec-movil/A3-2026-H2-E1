@@ -13,7 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import ar.edu.unlam.scaffoldingandroid3.R
 
 @Composable
 fun RoutesScreen() {
@@ -32,15 +34,13 @@ fun RoutesScreen() {
         )
 
         Text(
-            text = "Planificá tu viaje",
+            text = stringResource(R.string.routes_screen_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(top = 16.dp),
         )
 
         Text(
-            text =
-                "Acá vas a poder buscar un destino " +
-                    "y consultar recorridos y combinaciones.",
+            text = stringResource(R.string.routes_screen_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 8.dp),
         )

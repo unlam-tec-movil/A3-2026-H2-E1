@@ -1,6 +1,5 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
-import ar.edu.unlam.scaffoldingandroid3.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import ar.edu.unlam.scaffoldingandroid3.R
 
 @Composable
 fun FavoriteSearchEmptyState(onClearSearch: () -> Unit) {
