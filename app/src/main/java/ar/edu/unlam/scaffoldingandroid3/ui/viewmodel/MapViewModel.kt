@@ -9,6 +9,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.NearbyStopsResult
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
+import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.SensorRepository
@@ -33,6 +34,8 @@ import javax.inject.Inject
 private const val LOCATION_TIMEOUT_MILLIS = 10_000L
 private const val LOCATION_ERROR = "Error loading user location"
 private const val UNKNOWN_ERROR = "Unknown error occurred while loading the user location"
+private const val REROUTE_THRESHOLD_METERS = 15.0
+private const val REROUTE_MIN_INTERVAL_MILLIS = 5_000L
 
 /** Punto de partida cuando el pasajero prefiere explorar el mapa sin usar su ubicación. */
 private val DEFAULT_MANUAL_LOCATION = LocationData(Latitude(-34.6705), Longitude(-58.5628))
@@ -71,6 +74,8 @@ class MapViewModel
         private var clusterFilterStopIds: Set<Long>? = null
         private var orientationJob: Job? = null
         private var locationUpdatesJob: Job? = null
+        private var isRerouting = false
+        private var lastRerouteTimeMillis = 0L
 
         override fun onCleared() {
             stopNavigationSensors()
@@ -168,22 +173,71 @@ class MapViewModel
         private fun onLocationUpdated(newLocation: LocationData) {
             val current = _uiState.value as? MapUiState.Success ?: return
 
-            val updatedBearing =
-                if (current.isNavigationMode && current.selectedStopId != null) {
-                    val targetStop =
-                        current.busStops.firstOrNull { it.stopId == current.selectedStopId }
-                            ?: current.filteredStops.firstOrNull { it.stopId == current.selectedStopId }
-                    targetStop?.let { calculateDestinationDirection(newLocation, it.locationData).bearing.value }
-                        ?: current.navigationBearing
-                } else {
-                    current.navigationBearing
+            var updatedRoutePoints = current.navigationRoutePoints
+            var updatedBearing = current.navigationBearing
+
+            if (current.isNavigationMode && current.selectedStopId != null) {
+                val targetStop =
+                    current.busStops.firstOrNull { it.stopId == current.selectedStopId }
+                        ?: current.filteredStops.firstOrNull { it.stopId == current.selectedStopId }
+
+                if (targetStop != null) {
+                    updatedBearing = calculateDestinationDirection(newLocation, targetStop.locationData).bearing.value
+
+                    val routePoints = current.navigationRoutePoints
+                    if (!routePoints.isNullOrEmpty()) {
+                        var closestIndex = 0
+                        var minDistance = Double.MAX_VALUE
+
+                        routePoints.forEachIndexed { index, point ->
+                            val dist = newLocation.distanceMetersTo(point)
+                            if (dist < minDistance) {
+                                minDistance = dist
+                                closestIndex = index
+                            }
+                        }
+
+                        val currentTime = System.currentTimeMillis()
+                        if (minDistance > REROUTE_THRESHOLD_METERS &&
+                            !isRerouting &&
+                            currentTime - lastRerouteTimeMillis > REROUTE_MIN_INTERVAL_MILLIS
+                        ) {
+                            recalculateRoute(newLocation, targetStop)
+                        } else if (minDistance <= REROUTE_THRESHOLD_METERS) {
+                            updatedRoutePoints = listOf(newLocation) + routePoints.subList(closestIndex, routePoints.size)
+                        }
+                    }
                 }
+            }
 
             _uiState.value =
                 current.copy(
                     center = newLocation,
                     navigationBearing = updatedBearing,
+                    navigationRoutePoints = updatedRoutePoints,
                 )
+        }
+
+        private fun recalculateRoute(
+            userLocation: LocationData,
+            targetStop: BusStop,
+        ) {
+            isRerouting = true
+            lastRerouteTimeMillis = System.currentTimeMillis()
+            viewModelScope.launch {
+                try {
+                    val routeResult = getPedestrianRoute(userLocation, targetStop.locationData)
+                    val updatedCurrent = _uiState.value as? MapUiState.Success ?: return@launch
+                    if (updatedCurrent.isNavigationMode && updatedCurrent.selectedStopId == targetStop.stopId) {
+                        val points = routeResult.getOrNull()?.points
+                        if (!points.isNullOrEmpty()) {
+                            _uiState.value = updatedCurrent.copy(navigationRoutePoints = points)
+                        }
+                    }
+                } finally {
+                    isRerouting = false
+                }
+            }
         }
 
         /** Filtra las paradas del estado actual mientras el pasajero escribe. */
