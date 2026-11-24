@@ -1,6 +1,6 @@
-
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -42,25 +42,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.ui.helper.BusStopCardHelper
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.FavoriteRed
-import java.util.Locale
-import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
-private const val MAX_INITIAL_LINES = 4
+const val MAX_INITIAL_LINES = 4
 private const val QUIT_FROM_FAVORITES = "Quitar de favoritos"
 private const val ADD_FAVORITES = "Agregar a favoritos"
+private val helper = BusStopCardHelper()
 
 @Composable
 fun BusStopCard(
@@ -75,20 +77,16 @@ fun BusStopCard(
     var expanded by rememberSaveable(stop.stopId) {
         mutableStateOf(false)
     }
-
     var showShareMenu by rememberSaveable(stop.stopId) {
         mutableStateOf(false)
     }
-
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
-
+    val clipboard = LocalClipboard.current
     val totalLines = stop.busLines.size
     val hasOverflow = totalLines > MAX_INITIAL_LINES + 1
-
-    val displayedLines = getLinesToDisplay(stop, expanded, hasOverflow)
-
+    val displayedLines = helper.getLinesToDisplay(stop, expanded, hasOverflow)
     val hiddenCount = totalLines - displayedLines.size
+    val coroutineScope = rememberCoroutineScope()
 
     Card(
         modifier =
@@ -196,7 +194,7 @@ fun BusStopCard(
                     )
 
                     Text(
-                        text = formatDistance(distanceMeters),
+                        text = helper.formatDistance(distanceMeters),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -322,7 +320,7 @@ fun BusStopCard(
                                 showShareMenu = false
                             },
                         ) {
-                            val shareMessage = buildShareMessage(stop)
+                            val shareMessage = helper.buildShareMessage(stop)
 
                             DropdownMenuItem(
                                 text = {
@@ -356,7 +354,10 @@ fun BusStopCard(
                                                         Intent.ACTION_SEND,
                                                     ).apply {
                                                         type = "text/plain"
-                                                        putExtra(Intent.EXTRA_TEXT, shareMessage.message)
+                                                        putExtra(
+                                                            Intent.EXTRA_TEXT,
+                                                            shareMessage.message,
+                                                        )
                                                     },
                                                     "Compartir parada",
                                                 )
@@ -374,7 +375,16 @@ fun BusStopCard(
                                 onClick = {
                                     showShareMenu = false
 
-                                    clipboardManager.setText(AnnotatedString(shareMessage.mapsUrl))
+                                    coroutineScope.launch {
+                                        clipboard.setClipEntry(
+                                            ClipEntry(
+                                                ClipData.newPlainText(
+                                                    "Enlace de la parada",
+                                                    shareMessage.mapsUrl,
+                                                ),
+                                            ),
+                                        )
+                                    }
 
                                     Toast
                                         .makeText(
@@ -420,7 +430,7 @@ private fun BusLineChip(
     line: BusLine,
     modifier: Modifier = Modifier,
 ) {
-    val chipLabel = buildLineLabel(line)
+    val chipLabel = helper.buildLineLabel(line)
 
     SuggestionChip(
         onClick = {},
@@ -439,69 +449,4 @@ private fun BusLineChip(
             ),
         modifier = modifier,
     )
-}
-
-private fun formatDistance(meters: Double): String =
-    if (meters < 1_000) {
-        "${meters.roundToInt()} m"
-    } else {
-        String.format(
-            Locale.getDefault(),
-            "%.1f km",
-            meters / 1_000,
-        )
-    }
-
-private fun getLinesToDisplay(
-    stop: BusStop,
-    expanded: Boolean,
-    hasOverflow: Boolean,
-): List<BusLine> =
-    if (expanded || !hasOverflow) {
-        stop.busLines
-    } else {
-        stop.busLines.take(MAX_INITIAL_LINES)
-    }
-
-private fun buildLineLabel(line: BusLine): String =
-    buildString {
-        append(line.number)
-        if (line.branch.isNotBlank()) {
-            append(" ${line.branch}")
-        } else if (line.code.isNotBlank() && line.code != line.number.toString()) {
-            val nonDigits = line.code.filter { !it.isDigit() }.trim()
-            if (nonDigits.isNotBlank()) {
-                append(" $nonDigits")
-            }
-        }
-        if (line.destination.isNotBlank()) {
-            append(" → ${line.destination}")
-        }
-    }
-
-private fun buildShareMessage(stop: BusStop): ShareMessage =
-    ShareMessage(
-        stopName = stop.name,
-        linesText =
-            if (stop.busLines.isEmpty()) {
-                "Sin líneas informadas"
-            } else {
-                stop.busLines.joinToString(", ") { line ->
-                    buildString {
-                        append(line.number)
-                        if (line.branch.isNotBlank()) append(" ${line.branch}")
-                        if (line.destination.isNotBlank()) append(" → ${line.destination}")
-                    }
-                }
-            },
-        mapsUrl = "https://maps.google.com/?q=${stop.locationData.latitude.value},${stop.locationData.longitude.value}",
-    )
-
-data class ShareMessage(
-    val stopName: String,
-    val linesText: String,
-    val mapsUrl: String,
-) {
-    val message: String
-        get() = "Parada: $stopName\nLíneas: $linesText\nUbicación: $mapsUrl"
 }
