@@ -1,4 +1,3 @@
-
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
@@ -18,6 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.jupiter.api.DisplayName
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
@@ -71,7 +71,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `given no favorites, when it is shown, then displays the empty state`() {
+    @DisplayName("Dado que no hay favoritos, cuando se muestra la pantalla, entonces muestra el estado vacío")
+    fun givenNoFavoritesThenEmptyStateIsDisplayed() {
         showScreen()
 
         composeTestRule
@@ -84,7 +85,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `given a favorite stop, when it is shown, then lists only that stop`() {
+    @DisplayName("Dado que hay una parada favorita, cuando se muestra la pantalla, entonces lista solo esa parada")
+    fun givenOneFavoriteStopThenOnlyThatStopIsListed() {
         setFavorite()
         showScreen()
 
@@ -98,7 +100,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `given a favorite stop, when tapping its heart, then removes it from favorites`() {
+    @DisplayName("Dado que hay una parada favorita, cuando se hace clic en su corazón, entonces la elimina de los favoritos")
+    fun givenOneFavoriteStopThenTappingHeartRemovesItFromFavorites() {
         setFavorite()
         showScreen()
 
@@ -112,7 +115,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `given a favorite stop, when selecting it, then navigates to the map`() {
+    @DisplayName("Dado que hay una parada favorita, cuando se selecciona, entonces navega al mapa")
+    fun givenOneFavoriteStopThenSelectingItNavigatesToMap() {
         setFavorite()
         showScreen()
 
@@ -124,7 +128,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `search filters favorite stops by name`() {
+    @DisplayName("Cuando se busca, los favoritos se filtran por nombre")
+    fun searchFiltersFavoritesByStopName() {
         setFavorite()
         showScreen()
 
@@ -142,7 +147,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `search displays empty results message`() {
+    @DisplayName("La búsqueda muestra un mensaje de resultados vacíos")
+    fun searchDisplaysEmptyResultsMessage() {
         setFavorite()
         showScreen()
 
@@ -160,7 +166,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `clearing search restores favorite stops`() {
+    @DisplayName("Limpiar la búsqueda restaura las paradas favoritas")
+    fun clearingSearchRestoresFavoriteStops() {
         setFavorite()
         showScreen()
 
@@ -178,7 +185,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `empty state displays explore map button`() {
+    @DisplayName("El estado vacío muestra el botón de explorar mapa")
+    fun emptyStateDisplaysExploreMapButton() {
         showScreen()
 
         composeTestRule
@@ -187,7 +195,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `explore map button invokes navigation callback`() {
+    @DisplayName("El botón de explorar mapa invoca el callback de navegación")
+    fun exploreMapButtonInvokesNavigationCallback() {
         showScreen()
 
         composeTestRule
@@ -198,7 +207,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `removing favorite displays confirmation with undo action`() {
+    @DisplayName("Eliminar un favorito muestra una confirmación con acción de deshacer")
+    fun removingFavoriteDisplaysConfirmationWithUndoAction() {
         setFavorite()
         showScreen()
 
@@ -206,7 +216,7 @@ class FavoriteBusStopsScreenTest {
             .onNodeWithContentDescription("Quitar de favoritos")
             .performClick()
 
-        composeTestRule.mainClock.advanceTimeBy(1000)
+        composeTestRule.mainClock.advanceTimeBy(MAGIC_TIME_MS)
         composeTestRule.waitForIdle()
 
         composeTestRule
@@ -219,7 +229,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `undo restores removed favorite with its data`() {
+    @DisplayName("Deshacer restaura el favorito eliminado con sus datos")
+    fun undoRestoresRemovedFavoriteWithItsData() {
         setFavorite()
         showScreen()
 
@@ -239,7 +250,8 @@ class FavoriteBusStopsScreenTest {
     }
 
     @Test
-    fun `removing last favorite displays empty state`() {
+    @DisplayName("Eliminar el último favorito muestra el estado vacío")
+    fun removingLastFavoriteDisplaysEmptyState() {
         setFavorite()
         showScreen()
 
@@ -261,5 +273,9 @@ class FavoriteBusStopsScreenTest {
         composeTestRule
             .onNodeWithText("Explorar mapa")
             .assertIsDisplayed()
+    }
+
+    companion object Constants {
+        private const val MAGIC_TIME_MS = 1000L
     }
 }
