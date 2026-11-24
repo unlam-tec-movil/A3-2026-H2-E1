@@ -31,4 +31,20 @@
     <string name="favorite_empty_title">Todavía no agregaste paradas favoritas</string>
     <string name="favorite_empty_description">Explorá el mapa y guardá las paradas que usás con frecuencia para encontrarlas más rápido.</string>
     <string name="favorite_empty_button">Explorar mapa</string>
+    <string name="bus_stop_card_selected">PARADA SELECCIONADA</string>
+    <string name="bus_stop_card_quit_favorites">Quitar de favoritos</string>
+    <string name="bus_stop_card_add_favorites">Agregar a favoritos</string>
+    <string name="bus_stop_card_no_lines">Sin líneas informadas</string>
+    <string name="bus_stop_card_one_line">1 línea disponible</string>
+    <string name="bus_stop_card_lines">líneas disponibles</string>
+    <string name="bus_stop_card_view_less">Ver menos</string>
+    <string name="bus_stop_card_view_more">Ver más</string>
+    <string name="bus_stop_card_view_less_lines">Ver menos líneas</string>
+    <string name="bus_stop_card_view_more_lines">Ver más líneas</string>
+    <string name="bus_stop_card_share">Compartir</string>
+    <string name="bus_stop_card_whatsapp">Enviar por WhatsApp</string>
+    <string name="bus_stop_card_link_copied">Enlace copiado al portapapeles</string>
+    <string name="bus_stop_card_share_stop">Compartir parada</string>
+    <string name="bus_stop_card_copy_link">Copiar enlace</string>
+    <string name="bus_stop_card_other_apps">Otras apps</string>
 </resources>
