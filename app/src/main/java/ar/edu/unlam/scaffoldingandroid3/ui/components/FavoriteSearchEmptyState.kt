@@ -1,5 +1,6 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
+import ar.edu.unlam.scaffoldingandroid3.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -47,14 +49,14 @@ fun FavoriteSearchEmptyState(onClearSearch: () -> Unit) {
             )
 
             Text(
-                text = "No encontramos favoritas con esa búsqueda",
+                text = stringResource(R.string.favorite_search_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.onSurface,
                 textAlign = TextAlign.Center,
             )
 
             Text(
-                text = "Probá con otro nombre o número de línea.",
+                text = stringResource(R.string.favorite_search_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -63,7 +65,7 @@ fun FavoriteSearchEmptyState(onClearSearch: () -> Unit) {
             TextButton(
                 onClick = onClearSearch,
             ) {
-                Text("Limpiar búsqueda")
+                Text(stringResource(R.string.favorite_search_empty_clear))
             }
         }
     }

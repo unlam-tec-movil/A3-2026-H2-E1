@@ -47,4 +47,7 @@
     <string name="bus_stop_card_share_stop">Compartir parada</string>
     <string name="bus_stop_card_copy_link">Copiar enlace</string>
     <string name="bus_stop_card_other_apps">Otras apps</string>
+    <string name="favorite_search_empty_title">No encontramos favoritas con esa búsqueda</string>
+    <string name="favorite_search_empty_subtitle">Probá con otro nombre o número de línea.</string>
+    <string name="favorite_search_empty_clear">Limpiar búsqueda</string>
 </resources>
