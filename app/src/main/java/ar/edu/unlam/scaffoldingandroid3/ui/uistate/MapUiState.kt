@@ -25,5 +25,10 @@ sealed interface MapUiState {
         val isApproximate: Boolean = false,
         val isFromCache: Boolean = false,
         val isDemo: Boolean = false,
+        val isNavigationMode: Boolean = false,
+        val navigationRoutePoints: List<LocationData>? = null,
+        val navigationBearing: Double? = null,
+        val deviceAzimuth: Float? = null,
+        val isSensorAvailable: Boolean = true,
     ) : MapUiState
 }

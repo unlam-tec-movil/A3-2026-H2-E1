@@ -2,7 +2,15 @@ package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
@@ -36,6 +45,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -43,6 +53,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,6 +77,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import ar.edu.unlam.scaffoldingandroid3.R
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
@@ -77,6 +91,7 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
 import ar.edu.unlam.scaffoldingandroid3.ui.components.LocationPermissionManager
 import ar.edu.unlam.scaffoldingandroid3.ui.components.MessageContent
+import ar.edu.unlam.scaffoldingandroid3.ui.components.MiniCompass
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
@@ -121,6 +136,27 @@ fun NearbyStopsScreen(
         onRequestPermissionsResult = {},
         resolveRequest = resolveRequest,
     )
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> viewModel.pauseNavigationSensors()
+                    Lifecycle.Event.ON_RESUME -> viewModel.resumeNavigationSensors()
+                    else -> {}
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val isNavigationActive = (uiState as? MapUiState.Success)?.isNavigationMode == true
+    BackHandler(enabled = isNavigationActive) {
+        viewModel.toggleNavigationMode()
+    }
 
     Scaffold(
         snackbarHost = {
@@ -236,6 +272,9 @@ fun NearbyStopsScreen(
                                     viewModel.clearClusterFilter()
                                 },
                                 onOrientClick = onNavigateToCompass,
+                                onToggleNavigation = { stop ->
+                                    viewModel.toggleNavigationMode(stop)
+                                },
                                 favoriteIds = favoriteIds,
                                 onToggleFavorite = { stopId ->
                                     val stop =
@@ -435,6 +474,7 @@ private fun NearbyStopsContent(
     onClusterClick: (List<BusStop>) -> Unit = {},
     onClearClusterFilter: () -> Unit = {},
     selectedFavorite: FavoriteStopSnapshot? = null,
+    onToggleNavigation: (BusStop?) -> Unit = {},
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
     val coroutineScope = rememberCoroutineScope()
@@ -714,6 +754,8 @@ private fun NearbyStopsContent(
                 selectedStopId = state.selectedStopId,
                 selectedClusterStopIds = state.clusterFilterStopIds,
                 userFocusTrigger = userFocusTrigger,
+                routePoints = state.navigationRoutePoints,
+                isNavigationMode = state.isNavigationMode,
                 onStopClick = { stop ->
                     onStopClick(stop)
 
@@ -731,18 +773,40 @@ private fun NearbyStopsContent(
                 modifier = Modifier.fillMaxSize(),
             )
 
+            AnimatedVisibility(
+                visible = state.isNavigationMode && state.navigationBearing != null,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, top = 16.dp),
+            ) {
+                MiniCompass(
+                    targetBearing = state.navigationBearing ?: 0.0,
+                    deviceAzimuth = state.deviceAzimuth ?: 0f,
+                )
+            }
+
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter),
             ) {
-                HomeHeader(
-                    query = query,
-                    onQueryChange = onQueryChange,
-                    onSearchSubmitted = handleSearchSubmitted,
-                    recentSearches = recentSearches,
-                )
+                AnimatedVisibility(
+                    visible = !state.isNavigationMode,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    HomeHeader(
+                        query = query,
+                        onQueryChange = onQueryChange,
+                        onSearchSubmitted = handleSearchSubmitted,
+                        recentSearches = recentSearches,
+                    )
+                }
 
                 Box(
                     modifier =
@@ -753,19 +817,65 @@ private fun NearbyStopsContent(
                                 top = 12.dp,
                             ),
                 ) {
-                    FloatingActionButton(
-                        onClick = {
-                            userFocusTrigger++
-                        },
+                    Column(
                         modifier = Modifier.align(Alignment.TopEnd),
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary,
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Place,
-                            contentDescription =
-                                stringResource(R.string.nearby_center_on_location_description),
-                        )
+                        FloatingActionButton(
+                            onClick = {
+                                userFocusTrigger++
+                            },
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Place,
+                                contentDescription =
+                                    stringResource(R.string.nearby_center_on_location_description),
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = state.selectedStopId != null,
+                            enter = fadeIn() + scaleIn(),
+                            exit = fadeOut() + scaleOut(),
+                        ) {
+                            SmallFloatingActionButton(
+                                onClick = {
+                                    onToggleNavigation(selectedForReport)
+                                },
+                                containerColor =
+                                    if (state.isNavigationMode) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.surface
+                                    },
+                                contentColor =
+                                    if (state.isNavigationMode) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.primary
+                                    },
+                            ) {
+                                Icon(
+                                    imageVector =
+                                        if (state.isNavigationMode) {
+                                            Icons.Filled.Close
+                                        } else {
+                                            Icons.Filled.NearMe
+                                        },
+                                    contentDescription =
+                                        stringResource(
+                                            if (state.isNavigationMode) {
+                                                R.string.nearby_stop_navigation
+                                            } else {
+                                                R.string.nearby_navigate_to_stop
+                                            },
+                                        ),
+                                )
+                            }
+                        }
                     }
                 }
             }
