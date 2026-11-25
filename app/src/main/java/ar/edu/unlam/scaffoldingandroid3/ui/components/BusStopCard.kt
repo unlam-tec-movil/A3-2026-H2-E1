@@ -38,8 +38,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,10 +69,10 @@ fun BusStopCard(
     isFavorite: Boolean = false,
     onFavoriteClick: (() -> Unit)? = null,
 ) {
-    var expanded by remember(stop.stopId) {
+    var expanded by rememberSaveable(stop.stopId) {
         mutableStateOf(false)
     }
-    var showShareMenu by remember(stop.stopId) {
+    var showShareMenu by rememberSaveable(stop.stopId) {
         mutableStateOf(false)
     }
     val context = LocalContext.current
@@ -242,7 +242,7 @@ fun BusStopCard(
                                         R.string.bus_stop_card_view_less,
                                     )
                                 } else {
-                                    "+$hiddenCount ${stringResource(R.string.bus_stop_card_view_more)}"
+                                    stringResource(R.string.bus_stop_card_more_count, hiddenCount)
                                 },
                             icon = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                             iconDescription =
@@ -360,14 +360,14 @@ fun BusStopCard(
                                                 ),
                                             ),
                                         )
-                                    }
 
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            R.string.bus_stop_card_link_copied,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                R.string.bus_stop_card_link_copied,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
                                 },
                             )
 

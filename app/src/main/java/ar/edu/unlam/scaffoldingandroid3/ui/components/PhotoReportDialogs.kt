@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -43,7 +42,7 @@ fun PhotoReportDialogs(
 
         is PhotoReportUiState.PhotoTaken -> {
             val categoryNames = CATEGORIES.associateWith { stringResource(it) }
-            var selectedCategory by remember { mutableIntStateOf(CATEGORIES.first()) }
+            var selectedCategory by rememberSaveable { mutableIntStateOf(CATEGORIES.first()) }
             var customObservation by rememberSaveable { mutableStateOf("") }
             val isOtherCategory = selectedCategory == R.string.photo_report_category_other
             val unknownCategoryMessage = stringResource(R.string.photo_report_unknown_category)
@@ -133,12 +132,12 @@ private fun getObservationText(
     unknownCategoryMessage: String,
 ): String =
     when (selectedCategory) {
-        in categoryNames -> {
-            categoryNames.getValue(selectedCategory)
-        }
-
         R.string.photo_report_category_other -> {
             customObservation.ifBlank { categoryNames.getValue(R.string.photo_report_category_other) }
+        }
+
+        in categoryNames -> {
+            categoryNames.getValue(selectedCategory)
         }
 
         else -> {

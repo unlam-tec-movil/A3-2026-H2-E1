@@ -40,9 +40,9 @@ fun BusStopOverflowChip(
                     },
                 labelColor =
                     if (expanded) {
-                        MaterialTheme.colorScheme.surfaceVariant
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     } else {
-                        MaterialTheme.colorScheme.secondaryContainer
+                        MaterialTheme.colorScheme.onSecondaryContainer
                     },
             ),
         modifier = modifier,

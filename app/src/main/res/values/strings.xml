@@ -39,6 +39,7 @@
     <string name="bus_stop_card_lines">líneas disponibles</string>
     <string name="bus_stop_card_view_less">Ver menos</string>
     <string name="bus_stop_card_view_more">Ver más</string>
+    <string name="bus_stop_card_more_count">+%d más</string>
     <string name="bus_stop_card_view_less_lines">Ver menos líneas</string>
     <string name="bus_stop_card_view_more_lines">Ver más líneas</string>
     <string name="bus_stop_card_share">Compartir</string>
@@ -70,7 +71,7 @@
     <string name="notice_whatsapp">Enviar por WhatsApp</string>
     <string name="notice_share_intent_title">Compartir aviso</string>
     <string name="notice_copy_link">Copiar enlace</string>
-    <string name="notice_clipboard_title">Enlace de la parada</string>
+    <string name="notice_clipboard_title">Enlace del aviso</string>
     <string name="notice_clipboard_copied">Enlace copiado al portapapeles</string>
     <string name="notice_other_apps">Otras apps</string>
     <string name="notice_retry">Reintentar</string>

@@ -290,13 +290,15 @@ fun FavoriteBusStopsScreen(
 internal fun filterAndSortFavoriteStops(
     stops: List<FavoriteStopSnapshot>,
     query: String,
-): List<FavoriteStopSnapshot> =
-    stops
+): List<FavoriteStopSnapshot> {
+    val search = query.trim()
+
+    return stops
         .filter { stop ->
-            query.isBlank() ||
-                stop.name.contains(
-                    query.trim(),
-                    ignoreCase = true,
-                ) ||
-                stop.lines.contains(query.trim(), ignoreCase = true)
-        }.sortedBy { it.name }
+            search.isBlank() ||
+                stop.name.contains(search, ignoreCase = true) ||
+                stop.lines.contains(search, ignoreCase = true)
+        }.sortedWith(
+            compareBy(String.CASE_INSENSITIVE_ORDER) { it.name },
+        )
+}

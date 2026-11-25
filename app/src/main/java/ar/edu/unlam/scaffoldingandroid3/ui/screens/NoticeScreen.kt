@@ -280,14 +280,14 @@ private fun NoticeCard(
                                                 ),
                                             ),
                                         )
-                                    }
 
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            toastMessage,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                toastMessage,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
                                 },
                             )
                             DropdownMenuItem(
