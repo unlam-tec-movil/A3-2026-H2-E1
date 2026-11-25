@@ -1,12 +1,7 @@
-
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,7 +67,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
@@ -91,13 +85,6 @@ import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.FavoriteBusStopsViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.PhotoReportViewModel
 import kotlinx.coroutines.launch
-
-internal fun favoriteActionMessage(wasFavorite: Boolean): String =
-    if (wasFavorite) {
-        "Parada eliminada de favoritas"
-    } else {
-        "Parada agregada a favoritas"
-    }
 
 @Composable
 fun NearbyStopsScreen(
@@ -122,49 +109,6 @@ fun NearbyStopsScreen(
 
     var query by rememberSaveable {
         mutableStateOf("")
-    }
-
-    val permissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions(),
-        ) { result ->
-            viewModel.onPermissionResult(
-                fineGranted =
-                    result[Manifest.permission.ACCESS_FINE_LOCATION] == true,
-                coarseGranted =
-                    result[Manifest.permission.ACCESS_COARSE_LOCATION] == true,
-            )
-        }
-
-    fun resolveLocationPermission() {
-        val fine =
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-            ) == PackageManager.PERMISSION_GRANTED
-
-        val coarse =
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            ) == PackageManager.PERMISSION_GRANTED
-
-        if (!fine && !coarse) {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                ),
-            )
-        } else {
-            viewModel.loadUserLocationAndStops(
-                isApproximate = coarse && !fine,
-            )
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        resolveLocationPermission()
     }
 
     Scaffold(
@@ -202,7 +146,7 @@ fun NearbyStopsScreen(
                                 message = "Usamos tu ubicación para mostrarte las paradas más cercanas.",
                                 primaryLabel = "Permitir ubicación",
                                 onPrimary = {
-                                    resolveLocationPermission()
+                                    // resolveLocationPermission()
                                 },
                                 secondaryLabel = "Explorar el mapa manualmente",
                                 onSecondary = {
@@ -225,7 +169,7 @@ fun NearbyStopsScreen(
                                 },
                                 secondaryLabel = "Reintentar",
                                 onSecondary = {
-                                    resolveLocationPermission()
+                                    // resolveLocationPermission()
                                 },
                             )
                         }
@@ -235,7 +179,7 @@ fun NearbyStopsScreen(
                                 message = "No pudimos obtener tu ubicación.",
                                 primaryLabel = "Reintentar",
                                 onPrimary = {
-                                    resolveLocationPermission()
+                                    // resolveLocationPermission()
                                 },
                                 secondaryLabel = "Explorar manualmente",
                                 onSecondary = {
@@ -250,7 +194,7 @@ fun NearbyStopsScreen(
                                 message = state.message,
                                 primaryLabel = "Reintentar",
                                 onPrimary = {
-                                    resolveLocationPermission()
+                                    // resolveLocationPermission()
                                 },
                             )
                         }
@@ -815,23 +759,7 @@ private fun NearbyStopsContent(
 }
 
 @Composable
-private fun EmptyTab(message: String) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = message,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun MessageContent(
+fun MessageContent(
     message: String,
     title: String? = null,
     showProgress: Boolean = false,
@@ -899,3 +827,10 @@ private fun MessageContent(
         }
     }
 }
+
+internal fun favoriteActionMessage(wasFavorite: Boolean): String =
+    if (wasFavorite) {
+        "Parada eliminada de favoritas"
+    } else {
+        "Parada agregada a favoritas"
+    }
