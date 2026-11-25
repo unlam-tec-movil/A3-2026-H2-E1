@@ -3,12 +3,19 @@ package ar.edu.unlam.scaffoldingandroid3.ui.viewmodel
 import app.cash.turbine.test
 import ar.edu.unlam.scaffoldingandroid3.dispatcher.MainDispatcherRule
 import ar.edu.unlam.scaffoldingandroid3.domain.enums.NearbyStopsOrigin
+import ar.edu.unlam.scaffoldingandroid3.domain.model.Bearing
+import ar.edu.unlam.scaffoldingandroid3.domain.model.BearingData
 import ar.edu.unlam.scaffoldingandroid3.domain.model.NearbyStopsResult
+import ar.edu.unlam.scaffoldingandroid3.domain.model.PedestrianRoute
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.BusStopRepository
 import ar.edu.unlam.scaffoldingandroid3.domain.repository.LocationRepository
+import ar.edu.unlam.scaffoldingandroid3.domain.repository.SensorRepository
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.CalculateDestinationDirection
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.CheckOrientationSensorAvailability
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.ExploreMapManually
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.FilterBusStops
 import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetNearbyStops
+import ar.edu.unlam.scaffoldingandroid3.domain.usecase.GetPedestrianRoute
 import ar.edu.unlam.scaffoldingandroid3.factory.TestDataFactory
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.MapUiState
 import io.mockk.Runs
@@ -17,6 +24,9 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -36,11 +46,31 @@ class MapExploreViewModelTest {
     private val filterBusStops = FilterBusStops()
     private val busStopRepository = mockk<BusStopRepository>()
     private val repository = mockk<LocationRepository>()
+    private val checkOrientationSensorAvailability = mockk<CheckOrientationSensorAvailability>()
+    private val calculateDestinationDirection = mockk<CalculateDestinationDirection>()
+    private val sensorRepository = mockk<SensorRepository>(relaxed = true)
+    private val getPedestrianRoute = mockk<GetPedestrianRoute>()
+    private val orientationFlow = MutableStateFlow<Float?>(45f)
     private lateinit var viewModel: MapViewModel
 
     private fun createViewModel(): MapViewModel {
         every { busStopRepository.getRecentSearches() } returns flowOf(emptyList())
-        return MapViewModel(exploreMapUseCase, getNearbyStops, filterBusStops, busStopRepository, repository)
+        every { checkOrientationSensorAvailability() } returns true
+        every { sensorRepository.orientationDegrees } returns orientationFlow
+        every { repository.getLocationUpdates(any(), any()) } returns emptyFlow()
+        every { calculateDestinationDirection(any(), any()) } returns BearingData(Bearing(90.0))
+        coEvery { getPedestrianRoute(any(), any()) } returns Result.success(PedestrianRoute(emptyList()))
+        return MapViewModel(
+            exploreMapUseCase,
+            getNearbyStops,
+            filterBusStops,
+            busStopRepository,
+            repository,
+            checkOrientationSensorAvailability,
+            calculateDestinationDirection,
+            sensorRepository,
+            getPedestrianRoute,
+        )
     }
 
     @Test
@@ -398,5 +428,154 @@ class MapExploreViewModelTest {
 
                 cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    @DisplayName("Debería activar modo navegación, calcular rumbo y obtener ruta peatonal")
+    fun shouldActivateNavigationModeAndFetchRoute() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+            val targetStop = expectedStops.first()
+            val expectedRoute =
+                PedestrianRoute(
+                    points = listOf(expectedLocation, targetStop.locationData),
+                    distanceMeters = 200.0,
+                    durationSeconds = 150.0,
+                )
+
+            coEvery { repository.isLocationEnabled() } returns true
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns
+                NearbyStopsResult(stops = expectedStops, origin = NearbyStopsOrigin.REMOTE)
+
+            viewModel = createViewModel()
+
+            coEvery { getPedestrianRoute(any(), any()) } returns
+                Result.success(expectedRoute)
+
+            viewModel.uiState.test {
+                assertEquals(MapUiState.Loading, awaitItem())
+                viewModel.loadUserLocationAndStops()
+                awaitItem() as MapUiState.Success
+
+                viewModel.selectBusStop(targetStop.stopId)
+                awaitItem() as MapUiState.Success
+
+                viewModel.toggleNavigationMode()
+
+                val navStateInitial = awaitItem() as MapUiState.Success
+                assertTrue(navStateInitial.isNavigationMode)
+                assertEquals(90.0, navStateInitial.navigationBearing)
+                assertEquals(targetStop.stopId, navStateInitial.selectedStopId)
+
+                val navStateWithRoute = awaitItem() as MapUiState.Success
+                assertEquals(expectedRoute.points, navStateWithRoute.navigationRoutePoints)
+
+                verify { sensorRepository.startOrientationUpdates() }
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería desactivar modo navegación al tocar toggle nuevamente y limpiar ruta")
+    fun shouldDeactivateNavigationModeWhenToggledAgain() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+            val targetStop = expectedStops.first()
+
+            coEvery { repository.isLocationEnabled() } returns true
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns
+                NearbyStopsResult(stops = expectedStops, origin = NearbyStopsOrigin.REMOTE)
+
+            viewModel = createViewModel()
+
+            viewModel.uiState.test {
+                awaitItem() // Loading
+                viewModel.loadUserLocationAndStops()
+                awaitItem() // Success
+
+                viewModel.selectBusStop(targetStop.stopId)
+                awaitItem() // Selected
+
+                viewModel.toggleNavigationMode()
+                awaitItem() // Nav active
+                awaitItem() // Nav with route
+
+                viewModel.toggleNavigationMode()
+                val navDeactivated = awaitItem() as MapUiState.Success
+                assertFalse(navDeactivated.isNavigationMode)
+                assertNull(navDeactivated.navigationRoutePoints)
+                assertNull(navDeactivated.navigationBearing)
+                assertNull(navDeactivated.deviceAzimuth)
+
+                verify { sensorRepository.stopOrientationUpdates() }
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería mantener modo navegación con brújula aunque la ruta falle (sin conexión)")
+    fun shouldKeepNavigationActiveWhenRouteFails() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+            val targetStop = expectedStops.first()
+
+            coEvery { repository.isLocationEnabled() } returns true
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns
+                NearbyStopsResult(stops = expectedStops, origin = NearbyStopsOrigin.REMOTE)
+            coEvery { getPedestrianRoute(any(), any()) } returns
+                Result.failure(java.io.IOException("Network down"))
+
+            viewModel = createViewModel()
+
+            viewModel.uiState.test {
+                awaitItem() // Loading
+                viewModel.loadUserLocationAndStops()
+                awaitItem() // Success
+
+                viewModel.selectBusStop(targetStop.stopId)
+                awaitItem() // Selected
+
+                viewModel.toggleNavigationMode()
+                val navState = awaitItem() as MapUiState.Success
+                assertTrue(navState.isNavigationMode)
+                assertEquals(90.0, navState.navigationBearing)
+                assertNull(navState.navigationRoutePoints)
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    @DisplayName("Debería pausar y reanudar sensores de navegación correctamente")
+    fun shouldPauseAndResumeNavigationSensors() =
+        runTest {
+            val expectedLocation = TestDataFactory.locationDataInstance()
+            val expectedStops = TestDataFactory.busStopList()
+            val targetStop = expectedStops.first()
+
+            coEvery { repository.isLocationEnabled() } returns true
+            coEvery { exploreMapUseCase() } returns expectedLocation
+            coEvery { getNearbyStops(expectedLocation) } returns
+                NearbyStopsResult(stops = expectedStops, origin = NearbyStopsOrigin.REMOTE)
+
+            viewModel = createViewModel()
+
+            viewModel.loadUserLocationAndStops()
+            viewModel.selectBusStop(targetStop.stopId)
+            viewModel.toggleNavigationMode()
+
+            viewModel.pauseNavigationSensors()
+            verify(atLeast = 1) { sensorRepository.stopOrientationUpdates() }
+
+            viewModel.resumeNavigationSensors()
+            verify(atLeast = 2) { sensorRepository.startOrientationUpdates() }
         }
 }

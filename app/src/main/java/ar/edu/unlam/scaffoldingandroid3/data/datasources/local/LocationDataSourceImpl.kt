@@ -3,11 +3,19 @@ package ar.edu.unlam.scaffoldingandroid3.data.datasources.local
 import android.Manifest
 import android.content.Context
 import android.location.LocationManager
+import android.os.Looper
 import androidx.annotation.RequiresPermission
 import ar.edu.unlam.scaffoldingandroid3.data.mapper.LocationMapper
 import ar.edu.unlam.scaffoldingandroid3.domain.model.LocationData
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.Priority
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -101,6 +109,47 @@ class LocationDataSourceImpl
             runCatching {
                 locationProvider.lastLocation.await()
             }.getOrNull()?.let { mapper.toDomain(it) }
+
+        @RequiresPermission(
+            allOf = [
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ],
+        )
+        override fun getLocationUpdates(
+            intervalMillis: Long,
+            minDistanceMeters: Float,
+        ): Flow<LocationData> =
+            callbackFlow {
+                val locationRequest =
+                    LocationRequest
+                        .Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMillis)
+                        .setMinUpdateDistanceMeters(minDistanceMeters)
+                        .build()
+
+                val locationCallback =
+                    object : LocationCallback() {
+                        override fun onLocationResult(result: LocationResult) {
+                            result.lastLocation?.let { location ->
+                                trySend(mapper.toDomain(location))
+                            }
+                        }
+                    }
+
+                try {
+                    locationProvider.requestLocationUpdates(
+                        locationRequest,
+                        locationCallback,
+                        Looper.getMainLooper(),
+                    )
+                } catch (e: Exception) {
+                    close(e)
+                }
+
+                awaitClose {
+                    locationProvider.removeLocationUpdates(locationCallback)
+                }
+            }
 
         /**
          * Verifica si el servicio de ubicación está habilitado en el dispositivo.

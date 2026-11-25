@@ -104,6 +104,8 @@
     <string name="nearby_no_stops">No hay paradas cerca de tu ubicación.</string>
     <string name="nearby_no_search_results">No encontramos paradas con esa búsqueda.</string>
     <string name="nearby_center_on_location_description">Centrar en mi ubicación</string>
+    <string name="nearby_navigate_to_stop">Orientarme hacia la parada</string>
+    <string name="nearby_stop_navigation">Detener navegación</string>
     <string name="favorite_added_message">Parada agregada a favoritas</string>
     <string name="favorite_removed_message">Parada eliminada de favoritas</string>
 </resources>
