@@ -32,17 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ar.edu.unlam.scaffoldingandroid3.R
 import ar.edu.unlam.scaffoldingandroid3.ui.uistate.CompassUiState
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.CompassViewModel
 
-/**
- * H02: el pasajero se orienta hacia una parada.
- * Muestra una flecha que apunta a la parada y se actualiza al girar el teléfono.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompassScreen(
@@ -73,12 +71,12 @@ fun CompassScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Orientarme") },
+                title = { Text(stringResource(R.string.compass_screen_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
+                            contentDescription = stringResource(R.string.compass_back_description),
                         )
                     }
                 },
@@ -97,16 +95,16 @@ fun CompassScreen(
             when (val state = uiState) {
                 CompassUiState.SensorUnavailable -> {
                     CompassMessage(
-                        message = "La brújula no está disponible en este dispositivo.",
-                        actionLabel = "Ver parada en el mapa",
+                        message = stringResource(R.string.compass_unavailable),
+                        actionLabel = stringResource(R.string.compass_map_action),
                         onAction = onBack,
                     )
                 }
 
                 CompassUiState.PermissionDenied -> {
                     CompassMessage(
-                        message = "Necesitamos tu ubicación para indicarte la dirección a la parada.",
-                        actionLabel = "Permitir ubicación",
+                        message = stringResource(R.string.compass_permission_denied),
+                        actionLabel = stringResource(R.string.compass_allow_location),
                         onAction = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
                     )
                 }
@@ -115,14 +113,14 @@ fun CompassScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(text = "Obteniendo tu ubicación…")
+                        Text(text = stringResource(R.string.compass_locating))
                     }
                 }
 
                 CompassUiState.LocationUnavailable -> {
                     CompassMessage(
-                        message = "No pudimos obtener tu ubicación.",
-                        actionLabel = "Reintentar",
+                        message = stringResource(R.string.compass_location_unavailable),
+                        actionLabel = stringResource(R.string.compass_retry),
                         onAction = { viewModel.locateUser() },
                     )
                 }
@@ -163,7 +161,7 @@ private fun CompassContent(
     Spacer(modifier = Modifier.height(32.dp))
     Icon(
         imageVector = Icons.Filled.KeyboardArrowUp,
-        contentDescription = "Dirección a la parada",
+        contentDescription = stringResource(R.string.compass_arrow_description),
         tint = MaterialTheme.colorScheme.primary,
         modifier =
             Modifier
@@ -172,7 +170,7 @@ private fun CompassContent(
     )
     Spacer(modifier = Modifier.height(32.dp))
     Text(
-        text = "Distancia en línea recta: ${distanceMeters.toInt()} m",
+        text = stringResource(R.string.compass_distance_label, distanceMeters.toInt()),
         style = MaterialTheme.typography.headlineSmall,
     )
 }

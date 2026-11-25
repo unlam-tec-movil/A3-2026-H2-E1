@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val LOCATION_TIMEOUT_MILLIS = 10_000L
 
@@ -36,7 +37,7 @@ class CompassViewModel
     @Inject
     constructor(
         savedStateHandle: SavedStateHandle,
-        private val checkOrientationSensorAvailability: CheckOrientationSensorAvailability,
+        checkOrientationSensorAvailability: CheckOrientationSensorAvailability,
         private val calculateDistanceToStop: CalculateDistanceToStop,
         private val calculateDestinationDirection: CalculateDestinationDirection,
         private val locationRepository: LocationRepository,
@@ -87,7 +88,7 @@ class CompassViewModel
                 _uiState.value = CompassUiState.Locating
                 try {
                     currentLocation =
-                        withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) { locationRepository.getLocationData() }
+                        withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS.milliseconds) { locationRepository.getLocationData() }
                     if (currentLocation == null) {
                         _uiState.value = CompassUiState.LocationUnavailable
                     } else {

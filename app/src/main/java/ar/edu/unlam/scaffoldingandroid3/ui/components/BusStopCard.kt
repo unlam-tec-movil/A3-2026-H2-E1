@@ -1,6 +1,6 @@
-
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -24,8 +24,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -35,29 +33,31 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ar.edu.unlam.scaffoldingandroid3.domain.model.BusLine
+import androidx.core.net.toUri
+import ar.edu.unlam.scaffoldingandroid3.R
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
+import ar.edu.unlam.scaffoldingandroid3.ui.helper.BusStopCardHelper
 import ar.edu.unlam.scaffoldingandroid3.ui.theme.FavoriteRed
-import java.util.Locale
-import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
-private const val MAX_INITIAL_LINES = 4
+const val MAX_INITIAL_LINES = 4
+val HELPER = BusStopCardHelper()
 
 @Composable
 fun BusStopCard(
@@ -72,54 +72,16 @@ fun BusStopCard(
     var expanded by rememberSaveable(stop.stopId) {
         mutableStateOf(false)
     }
-
     var showShareMenu by rememberSaveable(stop.stopId) {
         mutableStateOf(false)
     }
-
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
-
+    val clipboard = LocalClipboard.current
     val totalLines = stop.busLines.size
     val hasOverflow = totalLines > MAX_INITIAL_LINES + 1
-
-    val displayedLines =
-        if (expanded || !hasOverflow) {
-            stop.busLines
-        } else {
-            stop.busLines.take(MAX_INITIAL_LINES)
-        }
-
+    val displayedLines = HELPER.getLinesToDisplay(stop, expanded, hasOverflow)
     val hiddenCount = totalLines - displayedLines.size
-
-    val mapsUrl =
-        "https://maps.google.com/?q=" +
-            "${stop.locationData.latitude.value}," +
-            "${stop.locationData.longitude.value}"
-
-    val linesText =
-        if (stop.busLines.isEmpty()) {
-            "Sin líneas informadas"
-        } else {
-            stop.busLines.joinToString(", ") { line ->
-                buildString {
-                    append(line.number)
-
-                    if (line.branch.isNotBlank()) {
-                        append(" ${line.branch}")
-                    }
-
-                    if (line.destination.isNotBlank()) {
-                        append(" → ${line.destination}")
-                    }
-                }
-            }
-        }
-
-    val shareMessage =
-        "Parada: ${stop.name}\n" +
-            "Líneas: $linesText\n" +
-            "Ubicación: $mapsUrl"
+    val coroutineScope = rememberCoroutineScope()
 
     Card(
         modifier =
@@ -163,7 +125,7 @@ fun BusStopCard(
         ) {
             if (selected) {
                 Text(
-                    text = "PARADA SELECCIONADA",
+                    text = stringResource(R.string.bus_stop_card_selected),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -196,9 +158,11 @@ fun BusStopCard(
                                 },
                             contentDescription =
                                 if (isFavorite) {
-                                    "Quitar de favoritos"
+                                    stringResource(
+                                        R.string.bus_stop_card_quit_favorites,
+                                    )
                                 } else {
-                                    "Agregar a favoritos"
+                                    stringResource(R.string.bus_stop_card_add_favorites)
                                 },
                             tint =
                                 if (isFavorite) {
@@ -232,7 +196,7 @@ fun BusStopCard(
                     )
 
                     Text(
-                        text = formatDistance(distanceMeters),
+                        text = HELPER.formatDistance(distanceMeters),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -250,9 +214,9 @@ fun BusStopCard(
             Text(
                 text =
                     when (totalLines) {
-                        0 -> "Sin líneas informadas"
-                        1 -> "1 línea disponible"
-                        else -> "$totalLines líneas disponibles"
+                        0 -> stringResource(R.string.bus_stop_card_no_lines)
+                        1 -> stringResource(R.string.bus_stop_card_one_line)
+                        else -> "$totalLines ${stringResource(R.string.bus_stop_card_lines)}"
                     },
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -268,55 +232,29 @@ fun BusStopCard(
                     displayedLines.forEach { line ->
                         BusLineChip(line = line)
                     }
-
                     if (hasOverflow) {
-                        if (!expanded) {
-                            AssistChip(
-                                onClick = {
-                                    expanded = true
-                                },
-                                label = {
-                                    Text("+$hiddenCount más")
-                                },
-                                trailingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Filled.KeyboardArrowDown,
-                                        contentDescription = "Ver más líneas",
-                                        modifier = Modifier.size(16.dp),
+                        BusStopOverflowChip(
+                            expanded = expanded,
+                            onToggle = { expanded = !expanded },
+                            label =
+                                if (expanded) {
+                                    stringResource(
+                                        R.string.bus_stop_card_view_less,
                                     )
+                                } else {
+                                    stringResource(R.string.bus_stop_card_more_count, hiddenCount)
                                 },
-                                colors =
-                                    AssistChipDefaults.assistChipColors(
-                                        containerColor =
-                                            MaterialTheme.colorScheme.secondaryContainer,
-                                        labelColor =
-                                            MaterialTheme.colorScheme.onSecondaryContainer,
-                                    ),
-                            )
-                        } else {
-                            AssistChip(
-                                onClick = {
-                                    expanded = false
-                                },
-                                label = {
-                                    Text("Ver menos")
-                                },
-                                trailingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Filled.KeyboardArrowUp,
-                                        contentDescription = "Ver menos líneas",
-                                        modifier = Modifier.size(16.dp),
+                            icon = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            iconDescription =
+                                if (expanded) {
+                                    stringResource(
+                                        R.string.bus_stop_card_view_less_lines,
                                     )
+                                } else {
+                                    stringResource(R.string.bus_stop_card_view_more_lines)
                                 },
-                                colors =
-                                    AssistChipDefaults.assistChipColors(
-                                        containerColor =
-                                            MaterialTheme.colorScheme.surfaceVariant,
-                                        labelColor =
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
-                            )
-                        }
+                            modifier = modifier,
+                        )
                     }
                 }
             }
@@ -349,7 +287,7 @@ fun BusStopCard(
                                 modifier = Modifier.width(6.dp),
                             )
 
-                            Text("Compartir")
+                            Text(stringResource(R.string.bus_stop_card_share))
                         }
 
                         DropdownMenu(
@@ -358,9 +296,11 @@ fun BusStopCard(
                                 showShareMenu = false
                             },
                         ) {
+                            val shareMessage = HELPER.buildShareMessage(stop)
+
                             DropdownMenuItem(
                                 text = {
-                                    Text("Enviar por WhatsApp")
+                                    Text(stringResource(R.string.bus_stop_card_whatsapp))
                                 },
                                 onClick = {
                                     showShareMenu = false
@@ -368,10 +308,7 @@ fun BusStopCard(
                                     val intent =
                                         Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(
-                                                Intent.EXTRA_TEXT,
-                                                shareMessage,
-                                            )
+                                            putExtra(Intent.EXTRA_TEXT, shareMessage.message)
                                             setPackage("com.whatsapp")
                                         }
 
@@ -382,10 +319,7 @@ fun BusStopCard(
                                             val waIntent =
                                                 Intent(
                                                     Intent.ACTION_VIEW,
-                                                    Uri.parse(
-                                                        "https://wa.me/?text=" +
-                                                            Uri.encode(shareMessage),
-                                                    ),
+                                                    "https://wa.me/?text=${Uri.encode(shareMessage.message)}".toUri(),
                                                 )
 
                                             context.startActivity(waIntent)
@@ -398,7 +332,7 @@ fun BusStopCard(
                                                         type = "text/plain"
                                                         putExtra(
                                                             Intent.EXTRA_TEXT,
-                                                            shareMessage,
+                                                            shareMessage.message,
                                                         )
                                                     },
                                                     "Compartir parada",
@@ -412,27 +346,34 @@ fun BusStopCard(
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Copiar enlace")
+                                    Text(stringResource(R.string.bus_stop_card_copy_link))
                                 },
                                 onClick = {
                                     showShareMenu = false
 
-                                    clipboardManager.setText(
-                                        AnnotatedString(mapsUrl),
-                                    )
+                                    coroutineScope.launch {
+                                        clipboard.setClipEntry(
+                                            ClipEntry(
+                                                ClipData.newPlainText(
+                                                    "Enlace de la parada",
+                                                    shareMessage.mapsUrl,
+                                                ),
+                                            ),
+                                        )
 
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            "Enlace copiado al portapapeles",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                R.string.bus_stop_card_link_copied,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
                                 },
                             )
 
                             DropdownMenuItem(
                                 text = {
-                                    Text("Otras apps")
+                                    Text(stringResource(R.string.bus_stop_card_other_apps))
                                 },
                                 onClick = {
                                     showShareMenu = false
@@ -440,10 +381,7 @@ fun BusStopCard(
                                     val sendIntent =
                                         Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(
-                                                Intent.EXTRA_TEXT,
-                                                shareMessage,
-                                            )
+                                            putExtra(Intent.EXTRA_TEXT, shareMessage.message)
                                         }
 
                                     val chooser =
@@ -462,64 +400,3 @@ fun BusStopCard(
         }
     }
 }
-
-@Composable
-private fun BusLineChip(
-    line: BusLine,
-    modifier: Modifier = Modifier,
-) {
-    val chipLabel =
-        buildString {
-            append(line.number)
-
-            if (line.branch.isNotBlank()) {
-                append(" ${line.branch}")
-            } else if (
-                line.code.isNotBlank() &&
-                line.code != line.number.toString()
-            ) {
-                val nonDigits =
-                    line.code
-                        .filter {
-                            !it.isDigit()
-                        }.trim()
-
-                if (nonDigits.isNotBlank()) {
-                    append(" $nonDigits")
-                }
-            }
-
-            if (line.destination.isNotBlank()) {
-                append(" → ${line.destination}")
-            }
-        }
-
-    SuggestionChip(
-        onClick = {},
-        label = {
-            Text(
-                text = chipLabel,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        },
-        colors =
-            SuggestionChipDefaults.suggestionChipColors(
-                containerColor =
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                labelColor =
-                    MaterialTheme.colorScheme.onSurface,
-            ),
-        modifier = modifier,
-    )
-}
-
-private fun formatDistance(meters: Double): String =
-    if (meters < 1_000) {
-        "${meters.roundToInt()} m"
-    } else {
-        String.format(
-            Locale.getDefault(),
-            "%.1f km",
-            meters / 1_000,
-        )
-    }

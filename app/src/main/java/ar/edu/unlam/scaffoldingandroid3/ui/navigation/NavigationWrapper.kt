@@ -12,9 +12,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object MapDestination
 
-@Serializable
-data object RoutesDestination
-
 @Composable
 fun NavigationWrapper() {
     val navController = rememberNavController()

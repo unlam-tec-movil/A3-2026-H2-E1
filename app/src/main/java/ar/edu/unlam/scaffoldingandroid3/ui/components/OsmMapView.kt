@@ -1,7 +1,7 @@
 package ar.edu.unlam.scaffoldingandroid3.ui.components
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Point
@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -40,7 +43,7 @@ import org.osmdroid.views.overlay.Polygon
 import android.graphics.Color as AndroidColor
 import org.osmdroid.util.GeoPoint as OsmGeoPoint
 
-private val SELECTED_CLUSTER_COLOR = AndroidColor.parseColor("#FF9800")
+private val SELECTED_CLUSTER_COLOR = "#FF9800".toColorInt()
 
 @Composable
 fun OsmMapView(
@@ -90,7 +93,7 @@ fun OsmMapView(
         remember(context) {
             val defaultMarkerIcon = Marker(MapView(context)).icon
             defaultMarkerIcon?.mutate()?.apply {
-                setTint(AndroidColor.parseColor("#D32F2F")) // Rojo distintivo para ubicación del usuario
+                setTint("#D32F2F".toColorInt()) // Rojo distintivo para ubicación del usuario
             }
         }
 
@@ -117,16 +120,22 @@ fun OsmMapView(
                 setMultiTouchControls(true)
                 zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
                 controller.setZoom(15.5)
-                controller.setCenter(OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value))
+                controller.setCenter(
+                    OsmGeoPoint(
+                        userLocation.latitude.value,
+                        userLocation.longitude.value,
+                    ),
+                )
             }
         }
 
+    @SuppressLint("LocalContextResourcesRead")
     fun refreshOverlays(map: MapView) {
-        val userOsmPoint = OsmGeoPoint(currentUserLocation.latitude.value, currentUserLocation.longitude.value)
+        val userOsmPoint =
+            OsmGeoPoint(currentUserLocation.latitude.value, currentUserLocation.longitude.value)
 
         map.overlays.clear()
 
-        // Radio de 1000m alrededor del usuario (Círculo Polygon)
         val circleOverlay =
             Polygon(map).apply {
                 points = Polygon.pointsAsCircle(userOsmPoint, 1000.0)
@@ -137,7 +146,6 @@ fun OsmMapView(
             }
         map.overlays.add(circleOverlay)
 
-        // Marcador distintivo ROJO únicamente para la ubicación del usuario
         val userMarker =
             Marker(map).apply {
                 position = userOsmPoint
@@ -148,8 +156,7 @@ fun OsmMapView(
             }
         map.overlays.add(userMarker)
 
-        // Proyección y clustering de paradas (eximiendo la parada seleccionada)
-        val tempPoint = Point()
+        val pixelPoint = Point()
         val density = context.resources.displayMetrics.density
         val radiusPx = 60f * density
 
@@ -160,8 +167,8 @@ fun OsmMapView(
                     val osmP = OsmGeoPoint(lat, lon)
                     val proj = map.projection
                     if (proj != null) {
-                        proj.toPixels(osmP, tempPoint)
-                        ScreenPoint(tempPoint.x.toFloat(), tempPoint.y.toFloat())
+                        proj.toPixels(osmP, pixelPoint)
+                        ScreenPoint(pixelPoint.x.toFloat(), pixelPoint.y.toFloat())
                     } else {
                         ScreenPoint((lon * 1000).toFloat(), (lat * 1000).toFloat())
                     }
@@ -174,7 +181,11 @@ fun OsmMapView(
             when (item) {
                 is ClusterItem.Single -> {
                     val stop = item.stop
-                    val stopPoint = OsmGeoPoint(stop.locationData.latitude.value, stop.locationData.longitude.value)
+                    val stopPoint =
+                        OsmGeoPoint(
+                            stop.locationData.latitude.value,
+                            stop.locationData.longitude.value,
+                        )
                     val isSelected = stop.stopId == currentSelectedStopId
                     val stopMarker =
                         Marker(map).apply {
@@ -238,7 +249,11 @@ fun OsmMapView(
         if (selectedStopId != null) {
             val selectedStop = stops.firstOrNull { it.stopId == selectedStopId }
             if (selectedStop != null) {
-                val stopOsmPoint = OsmGeoPoint(selectedStop.locationData.latitude.value, selectedStop.locationData.longitude.value)
+                val stopOsmPoint =
+                    OsmGeoPoint(
+                        selectedStop.locationData.latitude.value,
+                        selectedStop.locationData.longitude.value,
+                    )
                 mapView.controller.animateTo(stopOsmPoint, 19.5, 1000L)
             }
         }
@@ -246,7 +261,8 @@ fun OsmMapView(
 
     LaunchedEffect(userFocusTrigger) {
         if (userFocusTrigger > 0) {
-            val userOsmPoint = OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
+            val userOsmPoint =
+                OsmGeoPoint(userLocation.latitude.value, userLocation.longitude.value)
             mapView.controller.animateTo(userOsmPoint, 17.0, 1000L)
         }
     }
@@ -296,7 +312,7 @@ private fun createClusterBitmap(
 ): BitmapDrawable {
     val density = context.resources.displayMetrics.density
     val sizePx = (36 * density).toInt()
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(sizePx, sizePx)
     val canvas = Canvas(bitmap)
 
     val radius = sizePx / 2f
@@ -326,5 +342,5 @@ private fun createClusterBitmap(
     val yPos = radius - ((textPaint.descent() + textPaint.ascent()) / 2)
     canvas.drawText(text, radius, yPos, textPaint)
 
-    return BitmapDrawable(context.resources, bitmap)
+    return bitmap.toDrawable(context.resources)
 }
