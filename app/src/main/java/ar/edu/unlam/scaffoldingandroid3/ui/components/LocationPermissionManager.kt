@@ -5,8 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
@@ -15,8 +14,7 @@ import ar.edu.unlam.scaffoldingandroid3.ui.viewmodel.MapViewModel
 fun LocationPermissionManager(
     viewModel: MapViewModel,
     onRequestPermissionsResult: () -> Unit,
-    onPermissionGranted: () -> Unit,
-    onLocationDisabled: () -> Unit,
+    resolveRequest: Int,
 ) {
     val context = LocalContext.current
 
@@ -56,5 +54,11 @@ fun LocationPermissionManager(
         }
     }
 
-    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(Unit) { resolveLocationPermission() }
+
+    LaunchedEffect(resolveRequest) {
+        if (resolveRequest > 0) {
+            resolveLocationPermission()
+        }
+    }
 }

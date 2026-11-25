@@ -2,16 +2,15 @@ package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,7 +27,6 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -36,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -63,11 +60,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ar.edu.unlam.scaffoldingandroid3.R
 import ar.edu.unlam.scaffoldingandroid3.domain.model.BusStop
 import ar.edu.unlam.scaffoldingandroid3.domain.model.FavoriteStopSnapshot
 import ar.edu.unlam.scaffoldingandroid3.domain.model.Latitude
@@ -76,6 +75,8 @@ import ar.edu.unlam.scaffoldingandroid3.domain.model.Longitude
 import ar.edu.unlam.scaffoldingandroid3.domain.model.SearchHistory
 import ar.edu.unlam.scaffoldingandroid3.domain.model.distanceMetersTo
 import ar.edu.unlam.scaffoldingandroid3.ui.components.BusStopCard
+import ar.edu.unlam.scaffoldingandroid3.ui.components.LocationPermissionManager
+import ar.edu.unlam.scaffoldingandroid3.ui.components.MessageContent
 import ar.edu.unlam.scaffoldingandroid3.ui.components.OsmMapView
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportCameraButton
 import ar.edu.unlam.scaffoldingandroid3.ui.components.PhotoReportDialogs
@@ -98,6 +99,8 @@ fun NearbyStopsScreen(
     val favoriteIds by favoriteViewModel.favoriteStopIds.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+    val favoriteAddedMessage = stringResource(favoriteActionMessageRes(wasFavorite = false))
+    val favoriteRemovedMessage = stringResource(favoriteActionMessageRes(wasFavorite = true))
 
     var selectedTab by rememberSaveable {
         mutableStateOf(HomeTab.Map)
@@ -110,6 +113,14 @@ fun NearbyStopsScreen(
     var query by rememberSaveable {
         mutableStateOf("")
     }
+
+    var resolveRequest by remember { mutableIntStateOf(0) }
+
+    LocationPermissionManager(
+        viewModel = viewModel,
+        onRequestPermissionsResult = {},
+        resolveRequest = resolveRequest,
+    )
 
     Scaffold(
         snackbarHost = {
@@ -135,20 +146,20 @@ fun NearbyStopsScreen(
                     when (val state = uiState) {
                         MapUiState.Loading -> {
                             MessageContent(
-                                message = "Buscando paradas cerca de vos...",
+                                message = stringResource(R.string.nearby_loading),
                                 showProgress = true,
                             )
                         }
 
                         MapUiState.PermissionDenied -> {
                             MessageContent(
-                                title = "Permiso de ubicación rechazado",
-                                message = "Usamos tu ubicación para mostrarte las paradas más cercanas.",
-                                primaryLabel = "Permitir ubicación",
+                                title = stringResource(R.string.nearby_permission_denied_title),
+                                message = stringResource(R.string.nearby_permission_denied_message),
+                                primaryLabel = stringResource(R.string.nearby_allow_location),
                                 onPrimary = {
-                                    // resolveLocationPermission()
+                                    resolveRequest++
                                 },
-                                secondaryLabel = "Explorar el mapa manualmente",
+                                secondaryLabel = stringResource(R.string.nearby_explore_map_manually),
                                 onSecondary = {
                                     viewModel.exploreManually()
                                 },
@@ -157,9 +168,9 @@ fun NearbyStopsScreen(
 
                         MapUiState.LocationDisabled -> {
                             MessageContent(
-                                title = "Ubicación desactivada",
-                                message = "Activá la ubicación del dispositivo.",
-                                primaryLabel = "Abrir ajustes",
+                                title = stringResource(R.string.nearby_location_disabled_title),
+                                message = stringResource(R.string.nearby_location_disabled_message),
+                                primaryLabel = stringResource(R.string.nearby_open_settings),
                                 onPrimary = {
                                     context.startActivity(
                                         Intent(
@@ -167,21 +178,21 @@ fun NearbyStopsScreen(
                                         ),
                                     )
                                 },
-                                secondaryLabel = "Reintentar",
+                                secondaryLabel = stringResource(R.string.nearby_retry),
                                 onSecondary = {
-                                    // resolveLocationPermission()
+                                    resolveRequest++
                                 },
                             )
                         }
 
                         MapUiState.LocationUnavailable -> {
                             MessageContent(
-                                message = "No pudimos obtener tu ubicación.",
-                                primaryLabel = "Reintentar",
+                                message = stringResource(R.string.nearby_location_unavailable),
+                                primaryLabel = stringResource(R.string.nearby_retry),
                                 onPrimary = {
-                                    // resolveLocationPermission()
+                                    resolveRequest++
                                 },
-                                secondaryLabel = "Explorar manualmente",
+                                secondaryLabel = stringResource(R.string.nearby_explore_manually),
                                 onSecondary = {
                                     viewModel.exploreManually()
                                 },
@@ -190,11 +201,11 @@ fun NearbyStopsScreen(
 
                         is MapUiState.Error -> {
                             MessageContent(
-                                title = "Error de conexión",
+                                title = stringResource(R.string.nearby_connection_error_title),
                                 message = state.message,
-                                primaryLabel = "Reintentar",
+                                primaryLabel = stringResource(R.string.nearby_retry),
                                 onPrimary = {
-                                    // resolveLocationPermission()
+                                    resolveRequest++
                                 },
                             )
                         }
@@ -241,7 +252,12 @@ fun NearbyStopsScreen(
                                             snackbarHostState.currentSnackbarData?.dismiss()
 
                                             snackbarHostState.showSnackbar(
-                                                message = favoriteActionMessage(wasFavorite),
+                                                message =
+                                                    if (wasFavorite) {
+                                                        favoriteRemovedMessage
+                                                    } else {
+                                                        favoriteAddedMessage
+                                                    },
                                                 duration = SnackbarDuration.Short,
                                             )
                                         }
@@ -303,7 +319,7 @@ private fun HomeHeader(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = "Voy en Bondi",
+                text = stringResource(R.string.nearby_home_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -314,13 +330,13 @@ private fun HomeHeader(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
-                    Text("Buscar parada o línea…")
+                    Text(stringResource(R.string.nearby_search_placeholder))
                 },
                 leadingIcon = {
                     IconButton(onClick = { onSearchSubmitted(query) }) {
                         Icon(
                             imageVector = Icons.Filled.Search,
-                            contentDescription = "Buscar",
+                            contentDescription = stringResource(R.string.nearby_search_description),
                         )
                     }
                 },
@@ -329,7 +345,7 @@ private fun HomeHeader(
                         IconButton(onClick = { onQueryChange("") }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Limpiar búsqueda",
+                                contentDescription = stringResource(R.string.nearby_clear_search_description),
                             )
                         }
                     }
@@ -379,7 +395,7 @@ private fun HomeBottomBar(
                     )
                 },
                 label = {
-                    Text(tab.label)
+                    Text(stringResource(tab.labelRes))
                 },
             )
         }
@@ -387,19 +403,19 @@ private fun HomeBottomBar(
 }
 
 private enum class HomeTab(
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector,
 ) {
     Map(
-        label = "Mapa",
+        labelRes = R.string.nearby_tab_map,
         icon = Icons.Filled.Place,
     ),
     Notices(
-        label = "Avisos",
+        labelRes = R.string.nearby_tab_notices,
         icon = Icons.Filled.Notifications,
     ),
     Favorites(
-        label = "Favoritas",
+        labelRes = R.string.nearby_tab_favorites,
         icon = Icons.Filled.Favorite,
     ),
 }
@@ -506,7 +522,7 @@ private fun NearbyStopsContent(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
-                                text = "Ubicación aproximada. Las distancias pueden ser imprecisas.",
+                                text = stringResource(R.string.nearby_approximate_location),
                                 modifier = Modifier.padding(8.dp),
                                 textAlign = TextAlign.Center,
                             )
@@ -519,7 +535,7 @@ private fun NearbyStopsContent(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
-                                text = "Sin conexión. Mostrando paradas guardadas en caché.",
+                                text = stringResource(R.string.nearby_offline_cache),
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
@@ -531,7 +547,7 @@ private fun NearbyStopsContent(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
-                                text = "Sin datos del servidor. Mostrando paradas de ejemplo.",
+                                text = stringResource(R.string.nearby_demo_data),
                                 modifier = Modifier.padding(8.dp),
                             )
                         }
@@ -548,7 +564,7 @@ private fun NearbyStopsContent(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
-                            text = "Paradas cerca de vos",
+                            text = stringResource(R.string.nearby_stops_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -565,7 +581,7 @@ private fun NearbyStopsContent(
                                     },
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text("Orientarme")
+                                    Text(stringResource(R.string.nearby_orient_me))
                                 }
 
                                 PhotoReportCameraButton(
@@ -602,7 +618,11 @@ private fun NearbyStopsContent(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(
-                                    text = "Grupo de ${state.filteredStops.size} paradas",
+                                    text =
+                                        stringResource(
+                                            R.string.nearby_cluster_group,
+                                            state.filteredStops.size,
+                                        ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.Medium,
@@ -614,7 +634,8 @@ private fun NearbyStopsContent(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Close,
-                                        contentDescription = "Quitar filtro de grupo",
+                                        contentDescription =
+                                            stringResource(R.string.nearby_clear_cluster_filter_description),
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(16.dp),
                                     )
@@ -626,14 +647,14 @@ private fun NearbyStopsContent(
                     when {
                         state.busStops.isEmpty() -> {
                             Text(
-                                text = "No hay paradas cerca de tu ubicación.",
+                                text = stringResource(R.string.nearby_no_stops),
                                 modifier = Modifier.padding(16.dp),
                             )
                         }
 
                         state.filteredStops.isEmpty() -> {
                             Text(
-                                text = "No encontramos paradas con esa búsqueda.",
+                                text = stringResource(R.string.nearby_no_search_results),
                                 modifier = Modifier.padding(16.dp),
                             )
                         }
@@ -742,7 +763,8 @@ private fun NearbyStopsContent(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Place,
-                            contentDescription = "Centrar en mi ubicación",
+                            contentDescription =
+                                stringResource(R.string.nearby_center_on_location_description),
                         )
                     }
                 }
@@ -758,79 +780,10 @@ private fun NearbyStopsContent(
     )
 }
 
-@Composable
-fun MessageContent(
-    message: String,
-    title: String? = null,
-    showProgress: Boolean = false,
-    primaryLabel: String? = null,
-    onPrimary: () -> Unit = {},
-    secondaryLabel: String? = null,
-    onSecondary: () -> Unit = {},
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (showProgress) {
-            CircularProgressIndicator()
-
-            Spacer(
-                modifier = Modifier.height(16.dp),
-            )
-        }
-
-        if (title != null) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-
-            Spacer(
-                modifier = Modifier.height(8.dp),
-            )
-        }
-
-        Text(
-            text = message,
-            textAlign = TextAlign.Center,
-        )
-
-        if (primaryLabel != null) {
-            Spacer(
-                modifier = Modifier.height(16.dp),
-            )
-
-            Button(
-                onClick = onPrimary,
-            ) {
-                Text(primaryLabel)
-            }
-        }
-
-        if (secondaryLabel != null) {
-            Spacer(
-                modifier = Modifier.height(8.dp),
-            )
-
-            OutlinedButton(
-                onClick = onSecondary,
-            ) {
-                Text(secondaryLabel)
-            }
-        }
-    }
-}
-
-internal fun favoriteActionMessage(wasFavorite: Boolean): String =
+@StringRes
+internal fun favoriteActionMessageRes(wasFavorite: Boolean): Int =
     if (wasFavorite) {
-        "Parada eliminada de favoritas"
+        R.string.favorite_removed_message
     } else {
-        "Parada agregada a favoritas"
+        R.string.favorite_added_message
     }

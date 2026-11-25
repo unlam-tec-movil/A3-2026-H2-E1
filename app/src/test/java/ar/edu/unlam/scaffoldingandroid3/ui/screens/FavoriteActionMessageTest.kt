@@ -1,34 +1,34 @@
-
 package ar.edu.unlam.scaffoldingandroid3.ui.screens
 
+import ar.edu.unlam.scaffoldingandroid3.R
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FavoriteActionMessageTest {
     @Test
     fun `adding a favorite returns confirmation message`() {
-        val result = favoriteActionMessage(wasFavorite = false)
+        val result = favoriteActionMessageRes(wasFavorite = false)
 
         assertEquals(
-            "Parada agregada a favoritas",
+            R.string.favorite_added_message,
             result,
         )
     }
 
     @Test
     fun `removing a favorite returns confirmation message`() {
-        val result = favoriteActionMessage(wasFavorite = true)
+        val result = favoriteActionMessageRes(wasFavorite = true)
 
         assertEquals(
-            "Parada eliminada de favoritas",
+            R.string.favorite_removed_message,
             result,
         )
     }
 
     @Test
     fun `adding and removing favorites return different messages`() {
-        val addedMessage = favoriteActionMessage(wasFavorite = false)
-        val removedMessage = favoriteActionMessage(wasFavorite = true)
+        val addedMessage = favoriteActionMessageRes(wasFavorite = false)
+        val removedMessage = favoriteActionMessageRes(wasFavorite = true)
 
         assertEquals(false, addedMessage == removedMessage)
     }
